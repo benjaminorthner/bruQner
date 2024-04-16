@@ -29,7 +29,7 @@ measurement_results = [1, 2, 3, 4]
 if __name__ == "__main__":
 
     # Setup ports and IP
-    target_ip = "172.26.48.1"  # receiving computers IP 
+    target_ip = "127.0.0.1"  # receiving computers IP 
     target_port = 12347  # receiving computers listening port
     my_ip = "127.0.0.1"
     my_port = 12345
@@ -63,4 +63,4 @@ if __name__ == "__main__":
             client.send_message(test_request_address, "Test Message")
 
         i += 1 
-        time.sleep(0.0001)  
+        time.sleep(1)  

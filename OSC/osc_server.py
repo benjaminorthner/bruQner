@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # Setup ports and IP
     target_ip = "127.0.0.1"
     target_port = 12345
-    my_ip = "172.26.48.1" 
+    my_ip = "127.0.0.1" 
     my_port = 12347  
     
     # Setup clientside (to send out measurements and test requests)
