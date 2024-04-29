@@ -13,7 +13,8 @@ def signal_handler(sig, frame):
     print("Shutdown completed")
     exit(0)
 
-
+def default_handler(address, *args):
+    print(f"Received message on {address} with arguments: {args}")
 
 def test_message_handler(address, client, received_message):
     print("Test received")
@@ -33,9 +34,9 @@ measurement_results = [1, 2, 3, 4]
 if __name__ == "__main__":
 
     # Setup ports and IP
-    target_ip = "127.0.0.1"
+    target_ip = "192.168.0.10"
     target_port = 12345
-    my_ip = "127.0.0.1" 
+    my_ip = "192.168.0.10" 
     my_port = 12347  
     
     # Setup clientside (to send out measurements and test requests)
@@ -45,7 +46,8 @@ if __name__ == "__main__":
     disp = dispatcher.Dispatcher()
     disp.map(test_request_address, test_message_handler, client)
     disp.map(measurement_address, measurement_message_handler)
-
+    disp.set_default_handler(default_handler)
+    
     # Setup and run server to receive test responses
     server = osc_server.ThreadingOSCUDPServer((my_ip, my_port), disp)
     print(f"Serving on {server.server_address}")

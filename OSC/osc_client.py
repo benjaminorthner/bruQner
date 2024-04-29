@@ -5,6 +5,7 @@ import threading
 import time
 from random import choice
 import signal
+import pandas as pd
 
 
 # make sure servers are shut down properly when forced close python
@@ -24,7 +25,9 @@ measurement_address = "/bruQner/measurement_result"
 test_request_address = "/bruQner/connection_test/request"
 test_response_address = "/bruQner/connection_test/response"
 
-measurement_results = [1, 2, 3, 4]
+data_quantum = pd.read_csv("OSC/Quantum_Music_2.8.csv", header=None, names=['setting_a', 'setting_b', 'result_a', 'result_b'])
+data_classic = pd.read_csv("OSC/Quantum_Music_1.4.csv", header=None, names=['setting_a', 'setting_b', 'result_a', 'result_b'])
+
 
 if __name__ == "__main__":
 
@@ -56,7 +59,16 @@ if __name__ == "__main__":
     # send measurement result every 1s forever
     i = 0
     while True:
-        client.send_message(measurement_address, choice(measurement_results))
+
+        # Random number from
+        # client.send_message(measurement_address, choice([1, 2, 3, 4]))
+
+        # loop through data row by row
+        d = data_quantum.iloc[i % len(data_quantum)]
+        #d = data_classic.iloc[i % len(data_classic)]
+
+        measurement_result = f"{d['setting_a']} {d['setting_b']} {d['result_a']} {d['result_b']}"
+        client.send_message(measurement_address, measurement_result)
 
         # send test message every 10 iterations
         if i % 10 == 0:
