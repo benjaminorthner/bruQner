@@ -34,10 +34,10 @@ measurement_results = [1, 2, 3, 4]
 if __name__ == "__main__":
 
     # Setup ports and IP
-    target_ip = "192.168.0.10"
+    target_ip = "127.0.0.1"
     target_port = 12345
-    my_ip = "192.168.0.10" 
-    my_port = 12347  
+    my_ip = "128.131.196.9" 
+    my_port = 7401 
     
     # Setup clientside (to send out measurements and test requests)
     client = udp_client.SimpleUDPClient(target_ip, target_port)

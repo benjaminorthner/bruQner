@@ -32,8 +32,8 @@ data_classic = pd.read_csv("OSC/Quantum_Music_1.4.csv", header=None, names=['set
 if __name__ == "__main__":
 
     # Setup ports and IP
-    target_ip = "127.0.0.1"  # receiving computers IP 
-    target_port = 12347  # receiving computers listening port
+    target_ip = "128.131.195.237"  # receiving computers IP 
+    target_port = 7400  # receiving computers listening port
     my_ip = "127.0.0.1"
     my_port = 12345
     
@@ -64,15 +64,18 @@ if __name__ == "__main__":
         # client.send_message(measurement_address, choice([1, 2, 3, 4]))
 
         # loop through data row by row
-        d = data_quantum.iloc[i % len(data_quantum)]
-        #d = data_classic.iloc[i % len(data_classic)]
-
-        measurement_result = f"{d['setting_a']} {d['setting_b']} {d['result_a']} {d['result_b']}"
+        #d = data_quantum.iloc[i % len(data_quantum)]
+        d = data_classic.iloc[i % len(data_classic)]
+        measurement_result = d #f"{d['setting_a']} {d['setting_b']} {d['result_a']} {d['result_b']}"
+        print(measurement_result)
         client.send_message(measurement_address, measurement_result)
 
         # send test message every 10 iterations
         if i % 10 == 0:
-            client.send_message(test_request_address, "Test Message")
+            #client.send_message(test_request_address, "1")
+            #print('test')
+            pass
+
 
         i += 1 
-        time.sleep(1)  
+        time.sleep(0.02)  
