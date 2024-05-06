@@ -113,6 +113,10 @@ class KineticMountController:
 
 
 def set_angles_simultaneously(angle1, angle2):
+    """
+    Does not actually work simultaneously yet because can not handle responses from controller asynchronously without errors
+    But it is still slighly faster than just running back to back
+    """
     thread_a = threading.Thread(target=a_hwp.set_angle, args=(angle1,))
     thread_b = threading.Thread(target=b_hwp.set_angle, args=(angle2,))
 
