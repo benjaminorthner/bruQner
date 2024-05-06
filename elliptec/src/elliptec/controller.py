@@ -3,7 +3,7 @@
 import sys
 import serial
 from .tools import parse
-
+import threading
 
 class Controller:
     """Class for controlling the Elliptec devices via serial port. This is a general class,
@@ -34,6 +34,8 @@ class Controller:
                 timeout=timeout,
                 write_timeout=write_timeout,
             )
+            self.lock = threading.Lock()
+
         except serial.SerialException:
             print("Could not open port {port}.")
             # TODO: nicer/more logical shutdown (this kills the entire app?)
@@ -91,9 +93,11 @@ class Controller:
 
         if self.debug:
             print("TX:", command)
-        # Execute the command and wait for a response
-        self.s.write(command)  # This actually executes the command
-        response = self.read_response()
+        # Execute the command and wait for a response (while locking the thread)
+        # NOTE this is causing what limits our simultanous turn speed
+        with self.lock:
+            self.s.write(command)  # This actually executes the command
+            response = self.read_response()
 
         return response
 

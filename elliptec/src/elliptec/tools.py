@@ -1,7 +1,6 @@
 """Miscellaneous helper functions for the elliptec package."""
 from .errcodes import error_codes
 
-
 def is_null_or_empty(msg):
     """Checks if message is empty or null."""
     if not msg.endswith(b"\r\n") or (len(msg) == 0):
