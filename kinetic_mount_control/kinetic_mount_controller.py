@@ -1,5 +1,6 @@
 import sys
 import time
+import threading
 
 sys.path.append('elliptec/src')
 import elliptec
@@ -111,11 +112,33 @@ class KineticMountController:
                 assert motor_type in [6, 14], "\n\nERROR: Unsopported Device Type\n"
 
 
+def set_angles_simultaneously(angle1, angle2):
+    thread_a = threading.Thread(target=a_hwp.set_angle, args=(angle1,))
+    thread_b = threading.Thread(target=b_hwp.set_angle, args=(angle2,))
+
+    # Start both threads
+    thread_a.start()
+    thread_b.start()
+
+    # Wait for both threads to complete
+    thread_a.join()
+    thread_b.join()
+
 if __name__ == '__main__':
     KMC = KineticMountController(number_of_devices=3)
     
     shutter, a_hwp, b_hwp = KMC.devices
 
-    shutter.home()
-    shutter.open()
+    a_hwp.home()
+    b_hwp.home()
+    time.sleep(1)
+
+    for _ in range(10):
+        set_angles_simultaneously(90, 90)
+        time.sleep(0)
+        set_angles_simultaneously(45, 45)
+        time.sleep(0)
+
+    #shutter.home()
+    #shutter.open()
 

@@ -1,5 +1,6 @@
 """Module for rotation mount (ELL14) or rotary stage (ELL18). Inherits from elliptec.Motor."""
 from . import Motor
+import time
 
 
 class Rotator(Motor):
@@ -18,8 +19,9 @@ class Rotator(Motor):
         angle = self.extract_angle_from_status(status)
         return angle
 
-    def set_angle(self, angle):
+    def set_angle(self, angle, delay=0):
         """Moves the rotator to a particular angle (in degrees)."""
+        time.sleep(delay)
         position = self.angle_to_pos(angle)
         status = self.move("absolute", position)
         angle = self.extract_angle_from_status(status)

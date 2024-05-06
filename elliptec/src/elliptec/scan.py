@@ -30,7 +30,8 @@ def scan_for_devices(controller, start_address=0, stop_address=0, debug=True):
     for address in range(start_address, stop_address + 1):
         try:
             motor = Motor(controller, address=str(address), debug=debug)
-            print(f"{controller.port}, address {address}: ELL{motor.motor_type} \t(S/N: {motor.serial_no})")
+            if debug:
+                print(f"{controller.port}, address {address}: ELL{motor.motor_type} \t(S/N: {motor.serial_no})")
             device = {
                 "info": motor.info,
                 "controller": controller,

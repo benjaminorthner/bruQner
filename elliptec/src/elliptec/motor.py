@@ -3,7 +3,6 @@ from .cmd import get_, set_, mov_
 from .tools import error_check, move_check
 from .errors import ExternalDeviceNotFound
 
-
 class Motor:
     """A class that represents a general motor. Each device inherits from this class."""
 
@@ -128,3 +127,4 @@ class Motor:
     def close_connection(self):
         """Closes the serial port."""
         self.controller.close_connection()
+
