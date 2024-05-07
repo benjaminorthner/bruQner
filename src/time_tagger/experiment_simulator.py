@@ -33,16 +33,21 @@ def half_wave_plate_sympy(theta):
 
 
 class TT_Simulator:
-    def __init__(self, initial_state, debug=True) -> None:
+    def __init__(self, initial_state, initial_state_noise=0, debug=True) -> None:
         
         self.debug = debug
         self.initial_state = initial_state
+        self.initial_state_noise = initial_state_noise
 
         if self.debug:
             self._print_div("\nTIME-TAGGER SIMULATOR")
             print("Initialising . . .")
 
         self.initial_state_density = self._density_operator_from_vector(initial_state)
+        
+        # apply depolarizing noise (1-noise)*rho + noise * I, where noise from 0 to 1
+        self.initial_state_density = (1-self.initial_state_noise) * self.initial_state_density + self.initial_state_noise * sp.eye(4)
+
         self.correlation_function = self.find_correlation_function(self.initial_state_density)
         self.S, self.CHSH_angles = self.find_CHSH_angles(self.initial_state_density)
 
@@ -133,4 +138,4 @@ class TT_Simulator:
         print(f"a0:\t{self.CHSH_angles[0]:.4f}, a1:\t{self.CHSH_angles[1]:.4f}\nb0:\t{self.CHSH_angles[2]:.4f}, b1:\t{self.CHSH_angles[3]:.4f}")
 
         print("\nAnd measurements taken at this angle will produce as CHSH value S of")
-        print(f"S = {self.S}\n")
+        print(f"S = {self.S:.4F} ({100*self.S / (2*np.sqrt(2)) : .0f}% of S_bell )\n")

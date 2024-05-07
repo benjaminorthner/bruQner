@@ -21,4 +21,4 @@ if __name__ == '__main__':
     setup()
 
     # Setup Simulator (TODO put into setup code)
-    TTSim = TT_Simulator(two_particle_states['phi_plus'], debug=True)
+    TTSim = TT_Simulator(two_particle_states['phi_plus'], initial_state_noise=0, debug=True)
