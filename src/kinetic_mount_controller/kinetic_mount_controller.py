@@ -1,9 +1,7 @@
 import sys
 import time
 import threading
-
-sys.path.append('elliptec/src')
-import elliptec
+import src.elliptec as elliptec
 
 class DeviceError(Exception):
     """raised when there is an error regarding the setup of the kinetic devices"""
@@ -40,6 +38,10 @@ class KineticMountController:
         self._print_div('\nASSIGNING CONTROLLER')
         ports_found = elliptec.find_ports()
         print(f"Ports Found: {ports_found}")
+
+        if not ports_found:
+            raise Exception("\n\nNo ports found. Make sure Controller is plugged in\n")
+    
         self.controller = elliptec.Controller(ports_found[0], debug=False)
         self._print_div()
 
