@@ -1,8 +1,7 @@
 """ This file serves as a database of 2 particle quantum states to be used in simulating the experiment """
 
 import sympy as sp
-from sympy.physics.quantum import TensorProduct, Dagger
-
+from sympy.physics.quantum import TensorProduct 
 
 H = sp.Matrix([1, 0])
 V = sp.Matrix([0, 1])

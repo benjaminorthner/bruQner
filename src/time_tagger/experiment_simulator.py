@@ -7,19 +7,15 @@ import sympy as sp
 from sympy.physics.quantum import TensorProduct, Dagger
 from sympy.physics.quantum.trace import Tr
 from scipy.optimize import minimize
+from sys import stdout
 from . import states
 
 # Define |H>, |V> in 
-H = sp.Matrix([1, 0])
-V = sp.Matrix([0, 1])
+H = states.H 
+V = states.V 
 I2 = sp.eye(2)
 
 # Define Bell state vectors
-#phi_plus = (TensorProduct(H, H) + TensorProduct(V, V)) / sp.sqrt(2)
-#phi_minus = (TensorProduct(H, H) - TensorProduct(V, V)) / sp.sqrt(2)
-#psi_plus = (TensorProduct(H, V) + TensorProduct(V, H)) / sp.sqrt(2)
-#psi_minus = (TensorProduct(H, V) - TensorProduct(V, H)) / sp.sqrt(2)
-
 phi_plus = states.two_particle_states['phi_plus']
 phi_minus = states.two_particle_states['phi_minus']
 psi_plus = states.two_particle_states['psi_plus']
@@ -37,17 +33,35 @@ def half_wave_plate_sympy(theta):
 
 
 class TT_Simulator:
-    def __init__(self, initial_state) -> None:
+    def __init__(self, initial_state, debug=True) -> None:
         
+        self.debug = debug
         self.initial_state = initial_state
-        self.initial_state_density = self.density_operator_from_vector(initial_state)
+
+        if self.debug:
+            self._print_div("\nTIME-TAGGER SIMULATOR")
+            print("Initialising . . .")
+
+        self.initial_state_density = self._density_operator_from_vector(initial_state)
         self.correlation_function = self.find_correlation_function(self.initial_state_density)
         self.S, self.CHSH_angles = self.find_CHSH_angles(self.initial_state_density)
 
-        self.print_summary()
 
-        
-    def density_operator_from_vector(self, state_vector):
+        if self.debug:
+            stdout.write("\033[F")  # Move the cursor to the previous line
+            stdout.write("\033[K")  # clear the line
+            stdout.flush()
+            self.print_summary()
+            self._print_div()
+
+
+
+    
+    def _print_div(self, title=None):
+        if title is not None: print(title)
+        print('---------------------------------------------------------------') 
+
+    def _density_operator_from_vector(self, state_vector):
         """
         returns the density matrix corresponding to a specified state vector 
         """
@@ -109,14 +123,14 @@ class TT_Simulator:
 
     def print_summary(self):
 
-        print("For the initial state:")
+        print("\nFor the initial state:")
         print(self.initial_state)
 
-        print("The correlation function has the form:")
+        print("\nThe correlation function has the form:")
         print(self.correlation_function)
 
-        print("We find the following optimal CHSH angles (in multiples of pi):")
+        print("\nWe find the following optimal CHSH angles (in multiples of pi):")
         print(f"a0:\t{self.CHSH_angles[0]:.4f}, a1:\t{self.CHSH_angles[1]:.4f}\nb0:\t{self.CHSH_angles[2]:.4f}, b1:\t{self.CHSH_angles[3]:.4f}")
 
         print("\nAnd measurements taken at this angle will produce as CHSH value S of")
-        print(f"S = {self.S}")
+        print(f"S = {self.S}\n")

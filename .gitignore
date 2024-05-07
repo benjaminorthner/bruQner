@@ -1,1 +1,3 @@
 *.Identifier
+__pychache__/
+*.pyc

@@ -16,7 +16,9 @@ def performance_loop():
 
 
 if __name__ == '__main__':
+
+    # Setup kinetic mounts and calibrate
     setup()
 
-    print(two_particle_states)
-    #TTSim = TT_Simulator(phi_plus)
+    # Setup Simulator (TODO put into setup code)
+    TTSim = TT_Simulator(two_particle_states['phi_plus'], debug=True)
