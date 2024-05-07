@@ -1,5 +1,5 @@
 """
-Calculates system theoretcally and then
+Calculates system theoretically and then
 Simulates the ouput of the time tagger 
 """
 import numpy as np
@@ -39,6 +39,14 @@ class TT_Simulator:
         self.initial_state = initial_state
         self.initial_state_noise = initial_state_noise
 
+        # Define coincidence measurement operators
+        P_V = V * Dagger(V)  # |V><V| projection operator
+        P_H = H * Dagger(H)  # |H><H| projection operator
+        self.VH_operator = TensorProduct(P_V, P_H)
+        self.VV_operator = TensorProduct(P_V, P_V)
+        self.HH_operator = TensorProduct(P_H, P_H)
+        self.HV_operator = TensorProduct(P_H, P_V)
+
         if self.debug:
             self._print_div("\nTIME-TAGGER SIMULATOR")
             print("Initialising . . .")
@@ -46,7 +54,9 @@ class TT_Simulator:
         self.initial_state_density = self._density_operator_from_vector(initial_state)
         
         # apply depolarizing noise (1-noise)*rho + noise * I, where noise from 0 to 1
+        # then renormalise for trace to be 1
         self.initial_state_density = (1-self.initial_state_noise) * self.initial_state_density + self.initial_state_noise * sp.eye(4)
+        self.initial_state_density *= 1/Tr(self.initial_state_density)
 
         self.correlation_function = self.find_correlation_function(self.initial_state_density)
         self.S, self.CHSH_angles = self.find_CHSH_angles(self.initial_state_density)
@@ -80,20 +90,15 @@ class TT_Simulator:
         # Define Operator corresponding to two HWPs
         HWP_operator = sp.simplify(TensorProduct(half_wave_plate_sympy(theta_a), half_wave_plate_sympy(theta_b)))
 
-        # Define coincidence measurement operators
-        P_V = V * Dagger(V)  # |V><V| projection operator
-        P_H = H * Dagger(H)  # |H><H| projection operator
-        VH_operator = TensorProduct(P_V, P_H)
-        VV_operator = TensorProduct(P_V, P_V)
-        HH_operator = TensorProduct(P_H, P_H)
-        HV_operator = TensorProduct(P_H, P_V)
 
         # Apply HWP operator on initial state density
         state_density = sp.simplify(HWP_operator * initial_state_density * Dagger(HWP_operator))
 
-        # calculate correlation function
+        # Generate function that gives measurement probabities for each spcm pair
+        self.calc_outcome_probabilities(state_density, theta_a, theta_b)
 
-        C = Tr(state_density * HH_operator) - Tr(state_density * HV_operator)- Tr(state_density * VH_operator) + Tr(state_density * VV_operator)
+        # calculate correlation function
+        C = Tr(state_density * self.HH_operator) - Tr(state_density * self.HV_operator)- Tr(state_density * self.VH_operator) + Tr(state_density * self.VV_operator)
         C = C.simplify()
 
         if lambdify:
@@ -102,7 +107,10 @@ class TT_Simulator:
             return C 
 
     def find_CHSH_angles(self, initial_state_density):
-
+        """
+        Finds light polarisation angles that maximise S. Returns max S value reachable and list of angles in the ff. form:
+        [angleA1, angleA2, angleB1, angleB2]
+        """
         theta_a_0, theta_a_1, theta_b_0, theta_b_1 = sp.symbols('theta_a_0 theta_a_1 theta_b_0 theta_b_1', real=True)
 
         # get the lambdified correlation function (for faster computation)
@@ -116,12 +124,13 @@ class TT_Simulator:
             b1 = x[3] * np.pi 
             return -np.abs(C(a0, b0) + C(a1, b0) + C(a0, b1) - C(a1, b1))
 
+        # initial guess for angles
         x0 = [0, 1/4, -1/8, 3/8]
         bounds = [(-1,1),(-1,1),(-1,1),(-1,1)]
         constraint = {'type': 'eq', 'fun': lambda x: x[0]} # force first angle to be 0
 
         result = minimize(fun=S, x0=x0, bounds=bounds, constraints=constraint)
-        maximum = -result["fun"]
+        maximum = -result["fun"] # negative because we acutally want to maximize
         angles = result['x']
 
         return maximum, angles 
@@ -139,3 +148,42 @@ class TT_Simulator:
 
         print("\nAnd measurements taken at this angle will produce as CHSH value S of")
         print(f"S = {self.S:.4F} ({100*self.S / (2*np.sqrt(2)) : .0f}% of S_bell )\n")
+
+
+    def calc_outcome_probabilities(self, rho, theta_1, theta_2):
+        """
+        Returns a lambda function that gives probability of measuring click for each possible coincidence pair
+        """
+        self.outcome_probabilities = sp.lambdify([theta_1, theta_2],
+                sp.Matrix([
+                    Tr(rho * self.HH_operator),
+                    Tr(rho * self.HV_operator),
+                    Tr(rho * self.VH_operator),
+                    Tr(rho * self.VV_operator)
+        ]))
+
+    
+    def measure_entangled_pair(self, theta_a, theta_b) -> int:
+        """
+        Returns 0, 1, 2, 3 depending on which coincidence was triggered
+        0:HH, 1:HV, 2:VH, 3:VV 
+        """
+        return np.random.choice(a=[0, 1, 2, 3], p=self.outcome_probabilities(theta_a, theta_b)[:,0])
+        
+
+    def measure_n_entangled_pairs(self, n, theta_a, theta_b):
+        """
+        Perform n random entangled pair measurements for one angle setting and then return list showing how often each pair came up
+        List index corresponds to pair numbers. 
+        0:HH, 1:HV, 2:VH, 3:VV
+        """
+
+        N = np.array([0, 0, 0, 0], dtype=int)
+        for _ in range(n):
+            activated_output = self.measure_entangled_pair(theta_a, theta_b)
+            N[activated_output] += 1
+        
+        return N
+
+
+        
