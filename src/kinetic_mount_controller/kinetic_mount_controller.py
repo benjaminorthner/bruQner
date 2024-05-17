@@ -9,8 +9,134 @@ class DeviceError(Exception):
         super().__init__(message)
         self.message = message
 
-class KineticMountController:
+class KineticMountControl:
+    
+    def _print_div(self, title=None):
+        if title is not None: print(title)
+        print('---------------------------------------------------------------') 
 
+    def _get_connected_device(self, controller, stop_address=3):
+        """
+        Scan for device with address 0 and return info dictionary or None
+        """
+        try:
+            return elliptec.scan_for_devices(controller, start_address=0, stop_address=stop_address, debug=False)[0]
+        except:
+            return None
+
+    def _print_successfull_connection(self, device_info):
+        motor_type = device_info['info']['Motor Type']
+        description = elliptec.devices[motor_type]['description']
+        print(f"Device succesfully connected ({description})")
+
+    def __init__(self, number_of_devices) -> None:
+        
+        # initialise list of elliptec controllers
+        self.controllers = []
+        self.devices = []
+
+        # placeholders for Alice and Bobs rotation mount and the linear polariser shutter
+        self.alice = None
+        self.bob = None
+        self.shutter = None
+
+        # Search for controller and assign
+        self._print_div('\nASSIGNING CONTROLLERS')
+        ports_found = elliptec.find_ports()
+        print(f"Ports Found: {ports_found}")
+        
+        if len(ports_found) != number_of_devices:
+            raise Exception("\n\nNo ports found does not match specified number of devices\n")
+
+        self.controllers = []
+        for port in ports_found:
+            self.controllers.append(elliptec.Controller(port, debug=False))
+        self._print_div()
+
+        # get devices from controllers and assign
+        for controller in self.controllers:
+            
+            device = self._get_connected_device(controller, stop_address=3)
+
+            motor_type = device['info']['Motor Type']
+            address = device['info']['Address']
+
+            # Rotation Mount
+            if motor_type == 14:
+                rotator = elliptec.Rotator(controller, address=address, debug=False)
+                self.devices.append(rotator)
+
+                # assign rotator 
+                if self.alice == None:
+                    self.alice = rotator 
+                else:
+                    self.bob = rotator
+            
+            # Dual Position Slider
+            elif motor_type == 6:
+                new_shutter = elliptec.Shutter(controller, address=address, debug=False)
+                self.devices.append(new_shutter)
+
+                self.shutter = new_shutter
+
+            # Raise error if anything else
+            else:
+                assert motor_type in [6, 14], "\n\nERROR: Unsopported Device Type\n"
+            self._print_successfull_connection(device)
+
+    # MOVEMENT FUNCTIONS
+
+    # TODO: Shutter needs to be calibrated to open, and then only referred to as classical or quantum
+    def toggle_shutter():
+        pass
+
+    def rotate_simulataneously(self, alice_angle, bob_angle):
+        """
+        Uses multithreading to rotate bob and alice simultaneously
+        """
+        thread_a = threading.Thread(target=self.alice.set_angle, args=(alice_angle,))
+        thread_b = threading.Thread(target=self.bob.set_angle, args=(bob_angle,))
+
+        # Start both threads
+        thread_a.start()
+        thread_b.start()
+
+        # Wait for both threads to complete
+        thread_a.join()
+        thread_b.join()
+
+
+
+    # TEST FUNCTIONS
+    def wiggle_test(self, rotator):
+        "Wiggle rotator back and forth a couple times" 
+        if rotator == "alice":
+            ro = self.alice
+        elif rotator == "bob":
+            ro = self.bob
+
+        initial_angle = ro.get_angle()
+        for i in range(2*3):
+            ro.set_angle(initial_angle + (-1)*(i%2) * 45)
+            time.sleep(0.3)
+
+    def alice_check(self):
+        self.wiggle_test('alice')
+
+    def bob_check(self):
+        self.wiggle_test('bob')
+
+    def swap_alice_bob(self):
+        self.alice, self.bob = self.bob, self.alice
+        
+
+
+
+
+class KineticMountControllerBUS:
+    """
+    If using the BUS board and are connecting multiple devices via 1 USB (deprected)
+    """
     def _print_div(self, title=None):
         if title is not None: print(title)
         print('---------------------------------------------------------------') 
@@ -29,7 +155,7 @@ class KineticMountController:
         description = elliptec.devices[motor_type]['description']
         print(f"Device {sum(x is not None for x in self.assigned_device_infos)} succesfully connected ({description})")
 
-    def __init__(self, number_of_devices):
+    def __init__(self, number_of_devices, port=None):
 
         # initialise list of elliptec device objects
         self.devices = []
@@ -41,8 +167,13 @@ class KineticMountController:
 
         if not ports_found:
             raise Exception("\n\nNo ports found. Make sure Controller is plugged in\n")
-    
-        self.controller = elliptec.Controller(ports_found[0], debug=False)
+
+        if port == None:
+            port = ports_found[0]
+        elif port not in ports_found:
+            raise Exception(f"\n\nSpecified port ({port}) not found\n")
+
+        self.controller = elliptec.Controller(port, debug=False)
         self._print_div()
 
         # Go through sequence of searching for and assigning devices until all devices 
@@ -112,39 +243,3 @@ class KineticMountController:
             # Raise error if anything else
             else:
                 assert motor_type in [6, 14], "\n\nERROR: Unsopported Device Type\n"
-
-
-def set_angles_simultaneously(angle1, angle2):
-    """
-    Does not actually work simultaneously yet because can not handle responses from controller asynchronously without errors
-    But it is still slighly faster than just running back to back
-    """
-    thread_a = threading.Thread(target=a_hwp.set_angle, args=(angle1,))
-    thread_b = threading.Thread(target=b_hwp.set_angle, args=(angle2,))
-
-    # Start both threads
-    thread_a.start()
-    thread_b.start()
-
-    # Wait for both threads to complete
-    thread_a.join()
-    thread_b.join()
-
-if __name__ == '__main__':
-    KMC = KineticMountController(number_of_devices=3)
-    
-    shutter, a_hwp, b_hwp = KMC.devices
-
-    a_hwp.home()
-    b_hwp.home()
-    time.sleep(1)
-
-    for _ in range(10):
-        set_angles_simultaneously(90, 90)
-        time.sleep(0)
-        set_angles_simultaneously(45, 45)
-        time.sleep(0)
-
-    #shutter.home()
-    #shutter.open()
-

@@ -25,7 +25,7 @@ def half_wave_plate_sympy(theta):
     """
     returns operator for action of HWP 1 particle state in H,V basis
     note that the angles here are in terms of the angle of the EM field oscillation orientation, not the filter orientation
-    the angle for the filter is be half the angle specified here
+    the angle for the filter is to be half the angle specified here
     """
     c = sp.cos(theta)
     s = sp.sin(theta)
@@ -125,13 +125,13 @@ class TT_Simulator:
             return -np.abs(C(a0, b0) + C(a1, b0) + C(a0, b1) - C(a1, b1))
 
         # initial guess for angles
-        x0 = [0, 1/4, -1/8, 3/8]
+        x0 = [0, -1/8, 1/16, -1/16]
         bounds = [(-1,1),(-1,1),(-1,1),(-1,1)]
         constraint = {'type': 'eq', 'fun': lambda x: x[0]} # force first angle to be 0
 
         result = minimize(fun=S, x0=x0, bounds=bounds, constraints=constraint)
         maximum = -result["fun"] # negative because we acutally want to maximize
-        angles = result['x']
+        angles = [x * np.pi for x in result['x']] # give actual angle in radians again (not in multiples of pi)
 
         return maximum, angles 
 
@@ -144,7 +144,7 @@ class TT_Simulator:
         print(self.correlation_function)
 
         print("\nWe find the following optimal CHSH angles (in multiples of pi):")
-        print(f"a0:\t{self.CHSH_angles[0]:.4f}, a1:\t{self.CHSH_angles[1]:.4f}\nb0:\t{self.CHSH_angles[2]:.4f}, b1:\t{self.CHSH_angles[3]:.4f}")
+        print(f"a0:\t{self.CHSH_angles[0]/np.pi:.4f}, a1:\t{self.CHSH_angles[1]/np.pi:.4f}\nb0:\t{self.CHSH_angles[2]/np.pi:.4f}, b1:\t{self.CHSH_angles[3]/np.pi:.4f}")
 
         print("\nAnd measurements taken at this angle will produce as CHSH value S of")
         print(f"S = {self.S:.4F} ({100*self.S / (2*np.sqrt(2)) : .0f}% of S_bell )\n")

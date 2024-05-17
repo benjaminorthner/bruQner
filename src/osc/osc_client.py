@@ -25,17 +25,18 @@ measurement_address = "/bruQner/measurement_result"
 test_request_address = "/bruQner/connection_test/request"
 test_response_address = "/bruQner/connection_test/response"
 
-data_quantum = pd.read_csv("OSC/Quantum_Music_2.8.csv", header=None, names=['setting_a', 'setting_b', 'result_a', 'result_b'])
-data_classic = pd.read_csv("OSC/Quantum_Music_1.4.csv", header=None, names=['setting_a', 'setting_b', 'result_a', 'result_b'])
+data_quantum = pd.read_csv("data/Quantum_Music_2.8.csv", header=None, names=['setting_a', 'setting_b', 'result_a', 'result_b'])
+data_classic = pd.read_csv("data/Quantum_Music_1.4.csv", header=None, names=['setting_a', 'setting_b', 'result_a', 'result_b'])
+
 
 
 if __name__ == "__main__":
 
     # Setup ports and IP
-    target_ip = "128.131.195.237"  # receiving computers IP 
+    target_ip = "192.168.0.3"  # receiving computers IP 
     target_port = 7400  # receiving computers listening port
-    my_ip = "127.0.0.1"
-    my_port = 12345
+    my_ip = "192.168.0.2"
+    my_port = 7401
     
     # Setup handling of test responses 
     disp = dispatcher.Dispatcher()
@@ -64,18 +65,18 @@ if __name__ == "__main__":
         # client.send_message(measurement_address, choice([1, 2, 3, 4]))
 
         # loop through data row by row
-        #d = data_quantum.iloc[i % len(data_quantum)]
-        d = data_classic.iloc[i % len(data_classic)]
+        d = data_quantum.iloc[i % len(data_quantum)]
+        #d = data_classic.iloc[i % len(data_classic)]
         measurement_result = d #f"{d['setting_a']} {d['setting_b']} {d['result_a']} {d['result_b']}"
         print(measurement_result)
         client.send_message(measurement_address, measurement_result)
 
         # send test message every 10 iterations
-        if i % 10 == 0:
-            #client.send_message(test_request_address, "1")
-            #print('test')
-            pass
+        if i % 1 == 0:
+            client.send_message(test_request_address, "1")
+            print('test')
+            
 
 
         i += 1 
-        time.sleep(0.02)  
+        time.sleep(0.1)  
