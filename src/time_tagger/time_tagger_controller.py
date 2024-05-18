@@ -165,6 +165,7 @@ class TimeTaggerController:
     def _makeSingleCounterMeasurement(self, counters, binwidth_SI):
         """
         starts the counters and collects a single datapoint from each, returning as integer np.array
+        note binwidth must be the same as the co unter binwidth
         """
         # start all counters and stop again after integration time is over
         for counter in counters:
@@ -173,7 +174,7 @@ class TimeTaggerController:
         # since this is an async function wait until finished
         for counter in counters:
             counter.waitUntilFinished()
-        
+
         return np.array([counter.getData(rolling=False)[0][-1] for counter in counters], dtype=int)
 
     def measureS(self, KMC: KineticMountControl, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None):
@@ -188,20 +189,24 @@ class TimeTaggerController:
         counters = self._createCounters(channels=self.coincidences_vchannels.getChannels(), binwidth_SI=integration_time_per_basis_setting_SI, n_values=1)
 
         # an attempt to introduce corrections
-        """
         # get max reading for each 
-        maxCounts1= self._makeSingleCounterMeasurement(counters, binwidth_SI=3)
+
+        # TODO need to break symmetry in correction because error is not symmetric
+        
+        maxCounts1= self._makeSingleCounterMeasurement(counters, binwidth_SI=integration_time_per_basis_setting_SI)
         # rotate so that opposite coincidences should be at max
         KMC.rotate_simulataneously(alice_angle=0, bob_angle=45)
 
-        maxCounts2= self._makeSingleCounterMeasurement(counters, binwidth_SI=3)
+        maxCounts2= self._makeSingleCounterMeasurement(counters, binwidth_SI=integration_time_per_basis_setting_SI)
 
         maxPerCoincidenceChannel = np.maximum(maxCounts1, maxCounts2)
-        corrections = max(maxPerCoincidenceChannel) / maxPerCoincidenceChannel
+        minPerCoincidenceChannel = np.minimum(maxCounts1, maxCounts2)
+        corrections = max(maxPerCoincidenceChannel) / maxPerCoincidenceChannel - 1
 
         print(maxPerCoincidenceChannel)
+        print(minPerCoincidenceChannel)
         print(corrections)
-        """
+        
 
         alice_angles = CHSH_angles[0:2]
         bob_angles = CHSH_angles[2:4]
@@ -215,7 +220,11 @@ class TimeTaggerController:
                 # make a measurement (real or simulated) 
                 # [NTT, NTR, NRT, NRR]
                 if TTSimulator is None:
-                    N = self._makeSingleCounterMeasurement(counters, integration_time_per_basis_setting_SI)
+                    dA = np.deg2rad(a_angle - b_angle)
+                    N = self._makeSingleCounterMeasurement(counters, integration_time_per_basis_setting_SI) * np.array([1 + corrections[0] * (np.cos(dA)**2),
+                                                                                                                        1 + corrections[1] * (np.sin(dA)**2),
+                                                                                                                        1 + corrections[2] * (np.sin(dA)**2),
+                                                                                                                        1 + corrections[3] * (np.cos(dA)**2)])
                 else:
                     N = TTSimulator.measure_n_entangled_pairs_filter_angles(5000, theta_a=a_angle, theta_b=b_angle)
 
