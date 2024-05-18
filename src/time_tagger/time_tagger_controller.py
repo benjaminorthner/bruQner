@@ -22,7 +22,6 @@ class TimeTaggerController:
             'Bob_R': None
         }
 
-
     def set_alice_transmission_channel(self, channel):
         self.assigned_channels['Alice_T'] = channel
     def set_alice_reflection_channel(self, channel):
@@ -32,32 +31,43 @@ class TimeTaggerController:
     def set_bob_reflection_channel(self, channel):
         self.assigned_channels['Bob_R'] = channel
 
-    def displayCountTraces(self, channels=[1,2,3,4], binwidthSI=0.1, n_values=1000):
-        # convert binwidth to ps
-        traces = []
+    def displayCountTraces(self, channels=None, channel_names=None, binwidth_SI=0.1, n_values=1000):
+        """
+        Written to work in an Ipython/Jupyter type environment only
+        """
+        # find channels if not specified
+        if channels is None:
+           channels = self.tagger.getChannelList(TimeTagger.ChannelEdge.Rising) 
+
+        # crate counters for each trace
+        traces = self._createCounters(channels=channels, binwidth_SI=binwidth_SI, n_values=n_values)
+        # make labels for each trace
         trace_labels = []
-        for ch in channels:
-            counter = TimeTagger.Counter(tagger=self.tagger, channels=[ch], binwidth=binwidthSI * 1e12, n_values=n_values)
-            traces.append(counter)
+        for i, ch in enumerate(channels):
             
-            # if available assign channel names
-            label = next((key for key, value in self.assigned_channels.items() if value == ch), f"unassigned channel {ch}")
+            # if channel names not note, set either assigned channel name, or otherwise just the unassigned number
+            if channel_names is None:
+                label = next((key for key, value in self.assigned_channels.items() if value == ch), f"unassigned channel {ch}")
+            else:
+                label = channel_names[i]
+            
             trace_labels.append(label)
 
         # Init figure
         fig = go.FigureWidget()
-
             
         # add scatter for each virtual channel
         for trace, label in zip(traces, trace_labels):
             fig.add_scatter(x=trace.getIndex(), y=trace.getData()[0], name=f"{label}")
 
+        # this is just here so that if a cell gets rerun while a trace is already running 
+        # the already running trace will get cancelled first
         try:
             task_trace.cancel()
         except:
             pass
         loop = asyncio.get_event_loop()
-        task_trace = loop.create_task(self.update_traces(fig, traces, binwidthSI))
+        task_trace = loop.create_task(self.update_traces(fig, traces, binwidth_SI))
 
         # create container to contain figure and button
         output_container = Output()
@@ -66,20 +76,20 @@ class TimeTaggerController:
             display(fig, stop_button)
 
         # button callback action on click
-        stop_button.on_click(lambda a: self.stop_and_close_figure(task_trace, fig, output_container))
+        stop_button.on_click(lambda a: self._stop_and_close_figure(task_trace, fig, output_container))
 
         # display figure
         display(output_container)
 
-    async def update_traces(self, fig, traces, binwidthSI):
+    async def update_traces(self, fig, traces, binwidth_SI):
         currentMax = 0
-        refreshPeriod = binwidthSI if binwidthSI > 0.05 else 0.05
+        refreshPeriod = binwidth_SI if binwidth_SI > 0.05 else 0.05
         while True:
             try:
                 # Batch updates for all traces
                 with fig.batch_update():
                     for i, trace in enumerate(traces):
-                        y_data = trace.getData()[0] / binwidthSI
+                        y_data = trace.getData()[0] / binwidth_SI
 
                         ymax = np.max(y_data)
                         if ymax > currentMax:
@@ -94,7 +104,7 @@ class TimeTaggerController:
             except asyncio.CancelledError: # gracefully handle cancellation
                 break
     
-    def stop_and_close_figure(self, task, fig, output_container):
+    def _stop_and_close_figure(self, task, fig, output_container):
         # stop the update task
         task.cancel()
         # wait for stuff to close then close figure
@@ -102,3 +112,76 @@ class TimeTaggerController:
         fig.close()
         # close output container
         output_container.clear_output()
+
+        # delete coincidence channels if they exist
+        if hasattr(self, 'coincidences_vchannels'):
+            delattr(self, 'coincidences_vchannels')
+
+    def createCoincidenceChannels(self, coincidence_window_SI):
+        """
+        crates coincidence virtual channels and returns list of channelnames
+        """
+
+        # make coincidence groups
+        try:
+            groups = [(self.assigned_channels['Alice_T'], self.assigned_channels['Bob_T']), 
+                      (self.assigned_channels['Alice_T'], self.assigned_channels['Bob_R']),
+                      (self.assigned_channels['Alice_R'], self.assigned_channels['Bob_T']),
+                      (self.assigned_channels['Alice_R'], self.assigned_channels['Bob_R']),
+            ]
+            
+            channel_names = ['|T,T>', '|T,R>', '|R,T>', '|R,R>']
+
+            # 30ns coincidence window if want to match qutools (coincidence window is in ps)
+            # NOTE vchannels need to be a an instance variable (with self.) because otherwise they get auto deleted after some time and no longer exist
+            # This means we need to delete them manually when we stop looking at coincidences otherwise they keep existing in the background
+            self.coincidences_vchannels = TimeTagger.Coincidences(self.tagger, groups, coincidenceWindow=coincidence_window_SI * 1e12)
+
+            return channel_names
+
+        # in case channels are not yet assigned 
+        except KeyError as e:
+            missing_key = e.args[0]
+            raise RuntimeError(f"Error: Channel '{missing_key}' has not been assigned yet") from e
+
+    def displayCoincidenceTraces(self, coincidence_window_SI = 30e-9, binwidth_SI=0.1, n_values=1000):
+
+        # create coincidence channels which are saved in instance variable (names are retured)
+        channel_names = self.createCoincidenceChannels(coincidence_window_SI)
+
+        # display traces of coincidences
+        self.displayCountTraces(channels=self.coincidences_vchannels.getChannels(), channel_names=channel_names, binwidth_SI=binwidth_SI, n_values=n_values)
+
+    def _createCounters(self, channels, binwidth_SI, n_values):
+        counters = []
+        for ch in channels:
+            counter = TimeTagger.Counter(tagger=self.tagger, channels=[ch], binwidth=binwidth_SI * 1e12, n_values=n_values)
+            counters.append(counter)
+        
+        return counters
+
+
+    def _getSingleCounterData(self, counters, binwidth_SI):
+        """
+        starts the counters and collects a single datapoint from each, returning as a list
+        """
+        # start all counters and stop again after integration time is over
+        for counter in counters:
+            counter.startFor(binwidth_SI * 1e12)
+
+        # since this is an async function wait until finished
+        for counter in counters:
+            counter.waitUntilFinished()
+        
+        return [counter.getData(rolling=False)[0][-1] for counter in counters]
+
+
+    def measureS(self, KineticMountController, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1):
+        
+        # create the virtual channels
+        names = self.createCoincidenceChannels(coincidence_window_SI)
+
+        # create a counter for each virtual coincidence channel
+        counters = self._createCounters(channels=self.coincidences_vchannels.getChannels(), binwidth_SI=integration_time_per_basis_setting_SI, n_values=1)
+
+        data = self._getSingleCounterData(counters, integration_time_per_basis_setting_SI)
