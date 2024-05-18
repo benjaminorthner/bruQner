@@ -5,6 +5,7 @@ import plotly.graph_objs as go
 from ipywidgets import Button, Output
 from time import sleep
 from src.kinetic_mount_controller import KineticMountControl
+from src.time_tagger import TT_Simulator
 
 class TimeTaggerController:
 
@@ -175,7 +176,7 @@ class TimeTaggerController:
         
         return np.array([counter.getData(rolling=False)[0][-1] for counter in counters], dtype=int)
 
-    def measureS(self, KMC: KineticMountControl, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1):
+    def measureS(self, KMC: KineticMountControl, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None):
 
         # home all kinetic mounts
         KMC.home() 
@@ -211,13 +212,16 @@ class TimeTaggerController:
                 # rotates filters waits for them to finish rotating
                 KMC.rotate_simulataneously(a_angle, b_angle)
 
-                # make a measurement 
+                # make a measurement (real or simulated) 
                 # [NTT, NTR, NRT, NRR]
-                N = self._makeSingleCounterMeasurement(counters, integration_time_per_basis_setting_SI)
+                if TTSimulator is None:
+                    N = self._makeSingleCounterMeasurement(counters, integration_time_per_basis_setting_SI)
+                else:
+                    N = TTSimulator.measure_n_entangled_pairs_filter_angles(5000, theta_a=a_angle, theta_b=b_angle)
 
                 # calculate correlations 
                 corrs[i, j] = (N[0] - N[1] - N[2] + N[3]) / N.sum()
-                print(f"\ncorr[{i},{j}] = {corrs[i, j]}")
+                print(f"\ncorr[{'a' if i == 0 else 'A'},{'b' if j==0 else 'B'}] = {corrs[i, j]}")
                 print(f"\tN[{names[0]}]={N[0]}")
                 print(f"\tN[{names[1]}]={N[1]}")
                 print(f"\tN[{names[2]}]={N[2]}")

@@ -42,10 +42,10 @@ class TT_Simulator:
         # Define coincidence measurement operators
         P_V = V * Dagger(V)  # |V><V| projection operator
         P_H = H * Dagger(H)  # |H><H| projection operator
-        self.VH_operator = TensorProduct(P_V, P_H)
-        self.VV_operator = TensorProduct(P_V, P_V)
         self.HH_operator = TensorProduct(P_H, P_H)
         self.HV_operator = TensorProduct(P_H, P_V)
+        self.VH_operator = TensorProduct(P_V, P_H)
+        self.VV_operator = TensorProduct(P_V, P_V)
 
         if self.debug:
             self._print_div("\nTIME-TAGGER SIMULATOR")
@@ -55,12 +55,14 @@ class TT_Simulator:
         
         # apply depolarizing noise (1-noise)*rho + noise * I, where noise from 0 to 1
         # then renormalise for trace to be 1
-        self.initial_state_density = (1-self.initial_state_noise) * self.initial_state_density + self.initial_state_noise * sp.eye(4)
-        self.initial_state_density *= 1/Tr(self.initial_state_density)
+        #self.initial_state_density = (1-self.initial_state_noise) * self.initial_state_density + self.initial_state_noise * sp.eye(4)
+        #self.initial_state_density *= 1/Tr(self.initial_state_density)
 
         self.correlation_function = self.find_correlation_function(self.initial_state_density)
         self.S, self.CHSH_angles = self.find_CHSH_angles(self.initial_state_density)
 
+        # give the angles in terms of the filter angle (not light polarisation angle), and in degrees
+        self.CHSH_angles_for_filters = self.CHSH_angles * 90 / np.pi
 
         if self.debug:
             stdout.write("\033[F")  # Move the cursor to the previous line
@@ -131,7 +133,7 @@ class TT_Simulator:
 
         result = minimize(fun=S, x0=x0, bounds=bounds, constraints=constraint)
         maximum = -result["fun"] # negative because we acutally want to maximize
-        angles = [x * np.pi for x in result['x']] # give actual angle in radians again (not in multiples of pi)
+        angles = np.array([x * np.pi for x in result['x']]) # give actual angle in radians again (not in multiples of pi)
 
         return maximum, angles 
 
@@ -186,4 +188,8 @@ class TT_Simulator:
         return N
 
 
-        
+    def measure_n_entangled_pairs_filter_angles(self, n, theta_a, theta_b):
+        """
+        Same as measure_n_entangled_pairs() but with angles in degrees and for filters, so can be used directly in conjunction with real setup code
+        """
+        return self.measure_n_entangled_pairs(n, theta_a * np.pi/90, theta_b * np.pi / 90)
