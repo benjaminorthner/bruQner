@@ -4,6 +4,7 @@ import asyncio
 import plotly.graph_objs as go
 from ipywidgets import Button, Output
 from time import sleep
+from src.kinetic_mount_controller import KineticMountControl
 
 class TimeTaggerController:
 
@@ -160,10 +161,9 @@ class TimeTaggerController:
         
         return counters
 
-
-    def _getSingleCounterData(self, counters, binwidth_SI):
+    def _makeSingleCounterMeasurement(self, counters, binwidth_SI):
         """
-        starts the counters and collects a single datapoint from each, returning as a list
+        starts the counters and collects a single datapoint from each, returning as integer np.array
         """
         # start all counters and stop again after integration time is over
         for counter in counters:
@@ -173,10 +173,12 @@ class TimeTaggerController:
         for counter in counters:
             counter.waitUntilFinished()
         
-        return [counter.getData(rolling=False)[0][-1] for counter in counters]
+        return np.array([counter.getData(rolling=False)[0][-1] for counter in counters], dtype=int)
 
+    def measureS(self, KMC: KineticMountControl, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1):
 
-    def measureS(self, KineticMountController, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1):
+        # home all kinetic mounts
+        KMC.home() 
         
         # create the virtual channels
         names = self.createCoincidenceChannels(coincidence_window_SI)
@@ -184,4 +186,46 @@ class TimeTaggerController:
         # create a counter for each virtual coincidence channel
         counters = self._createCounters(channels=self.coincidences_vchannels.getChannels(), binwidth_SI=integration_time_per_basis_setting_SI, n_values=1)
 
-        data = self._getSingleCounterData(counters, integration_time_per_basis_setting_SI)
+        # an attempt to introduce corrections
+        """
+        # get max reading for each 
+        maxCounts1= self._makeSingleCounterMeasurement(counters, binwidth_SI=3)
+        # rotate so that opposite coincidences should be at max
+        KMC.rotate_simulataneously(alice_angle=0, bob_angle=45)
+
+        maxCounts2= self._makeSingleCounterMeasurement(counters, binwidth_SI=3)
+
+        maxPerCoincidenceChannel = np.maximum(maxCounts1, maxCounts2)
+        corrections = max(maxPerCoincidenceChannel) / maxPerCoincidenceChannel
+
+        print(maxPerCoincidenceChannel)
+        print(corrections)
+        """
+
+        alice_angles = CHSH_angles[0:2]
+        bob_angles = CHSH_angles[2:4]
+        corrs = np.zeros((2,2))
+        for i, a_angle in enumerate(alice_angles):
+            for j, b_angle in enumerate(bob_angles):
+                
+                # rotates filters waits for them to finish rotating
+                KMC.rotate_simulataneously(a_angle, b_angle)
+
+                # make a measurement 
+                # [NTT, NTR, NRT, NRR]
+                N = self._makeSingleCounterMeasurement(counters, integration_time_per_basis_setting_SI)
+
+                # calculate correlations 
+                corrs[i, j] = (N[0] - N[1] - N[2] + N[3]) / N.sum()
+                print(f"\ncorr[{i},{j}] = {corrs[i, j]}")
+                print(f"\tN[{names[0]}]={N[0]}")
+                print(f"\tN[{names[1]}]={N[1]}")
+                print(f"\tN[{names[2]}]={N[2]}")
+                print(f"\tN[{names[3]}]={N[3]}")
+        
+        # Calculate S
+        S = np.abs(corrs[0,0] + corrs[0,1] + corrs[1,0] - corrs[1,1])
+        print(f"\nS = abs(corrs[0,0] + corrs[0,1] + corrs[1,0] - corrs[1,1]) = {S}")
+
+        # rehome all mounts
+        KMC.home()

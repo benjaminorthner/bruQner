@@ -128,6 +128,11 @@ class KineticMountControl:
 
     def swap_alice_bob(self):
         self.alice, self.bob = self.bob, self.alice
+
+    def home(self):
+        self.alice.home()
+        self.bob.home()
+        self.shutter.open()
         
 
 
