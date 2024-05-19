@@ -192,7 +192,7 @@ class TimeTaggerController:
         # get max reading for each 
 
         # TODO need to break symmetry in correction because error is not symmetric
-        
+        """ 
         maxCounts1= self._makeSingleCounterMeasurement(counters, binwidth_SI=integration_time_per_basis_setting_SI)
         # rotate so that opposite coincidences should be at max
         KMC.rotate_simulataneously(alice_angle=0, bob_angle=45)
@@ -203,9 +203,15 @@ class TimeTaggerController:
         minPerCoincidenceChannel = np.minimum(maxCounts1, maxCounts2)
         corrections = max(maxPerCoincidenceChannel) / maxPerCoincidenceChannel - 1
 
+        correctionfunc = lambda a_angle, b_angle : np.array([1 + corrections[0] * (np.cos(np.deg2rad(a_angle - b_angle))**2),
+                                                             1 + corrections[1] * (np.sin(np.deg2rad(d_angle - b_angle))**2),
+                                                             1 + corrections[2] * (np.sin(np.deg2rad(d_angle - b_angle))**2),
+                                                             1 + corrections[3] * (np.cos(np.deg2rad(d_angle - b_angle))**2)])
+
         print(maxPerCoincidenceChannel)
         print(minPerCoincidenceChannel)
         print(corrections)
+        """
         
 
         alice_angles = CHSH_angles[0:2]
@@ -220,11 +226,7 @@ class TimeTaggerController:
                 # make a measurement (real or simulated) 
                 # [NTT, NTR, NRT, NRR]
                 if TTSimulator is None:
-                    dA = np.deg2rad(a_angle - b_angle)
-                    N = self._makeSingleCounterMeasurement(counters, integration_time_per_basis_setting_SI) * np.array([1 + corrections[0] * (np.cos(dA)**2),
-                                                                                                                        1 + corrections[1] * (np.sin(dA)**2),
-                                                                                                                        1 + corrections[2] * (np.sin(dA)**2),
-                                                                                                                        1 + corrections[3] * (np.cos(dA)**2)])
+                    N = self._makeSingleCounterMeasurement(counters, integration_time_per_basis_setting_SI) 
                 else:
                     N = TTSimulator.measure_n_entangled_pairs_filter_angles(5000, theta_a=a_angle, theta_b=b_angle)
 
@@ -242,3 +244,62 @@ class TimeTaggerController:
 
         # rehome all mounts
         KMC.home()
+
+    def measure_S_with_two_ports(self, ports:str, KMC:KineticMountControl, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None):
+        """
+        Does a bell measurement with 2 ports only simulates linear polarising filters using the Polarising beam splitter cubes together with the Half Wave Plates
+        -ports options : 'TT', 'RT', 'TR', 'RR', 'all_pairs'
+        """
+
+        # home all kinetic mounts
+        KMC.home() 
+        
+        # create the virtual channels
+        names = self.createCoincidenceChannels(coincidence_window_SI)
+        pair_names = ['TT', 'TR', 'RT', 'RR']
+
+        # create a counter for each virtual coincidence channel
+        counters = self._createCounters(channels=self.coincidences_vchannels.getChannels(), binwidth_SI=integration_time_per_basis_setting_SI, n_values=1)
+
+
+        alice_angles = CHSH_angles[0:2]
+        bob_angles = CHSH_angles[2:4]
+        corrs = np.zeros((4,2,2))
+        for i, a_angle in enumerate(alice_angles):
+            for j, b_angle in enumerate(bob_angles):
+            
+                # since we now dont have access to all 4 SPCMs we need to rotate the light 90deg to check the other polarisation
+                N = np.zeros((4,4), dtype=int)
+                for ii, a_angle_perp in enumerate([0, 45]):
+                    for jj, b_angle_perp in enumerate([0, 45]):
+                        
+                        new_a_angle = a_angle + a_angle_perp
+                        new_b_angle = b_angle + b_angle_perp
+                        # rotates filters waits for them to finish rotating
+                        KMC.rotate_simulataneously(new_a_angle, new_b_angle)
+
+                        # make a measurement (real or simulated) 
+                        # [NTT, NTR, NRT, NRR]
+                        if TTSimulator is None:
+                            N[:,2*ii + jj] = self._makeSingleCounterMeasurement(counters, integration_time_per_basis_setting_SI)
+                        else:
+                            N[:, 2*ii + jj] = TTSimulator.measure_n_entangled_pairs_filter_angles(5000, theta_a=new_a_angle, theta_b=new_b_angle)
+
+                # calculate correlations 
+                for pair in range(4):
+                    print(f"SPCM Pair: {pair_names[pair]}")
+                    corrs[pair, i, j] = (N[pair, 0] - N[pair, 1] - N[pair, 2] + N[pair, 3]) / N[pair,:].sum()
+                    print(f"\ncorr[{'a' if i == 0 else 'A'},{'b' if j==0 else 'B'}] = {corrs[pair, i, j]:.3f}")
+                    print(f"\tN[{names[0]}]={N[pair, 0]}")
+                    print(f"\tN[{names[1]}]={N[pair, 1]}")
+                    print(f"\tN[{names[2]}]={N[pair, 2]}")
+                    print(f"\tN[{names[3]}]={N[pair, 3]}")
+                    print('------------------------------')
+        
+        # Calculate S
+        S = np.abs(corrs[:,0,0] + corrs[:,0,1] + corrs[:,1,0] - corrs[:,1,1])
+        print(f"\nS = abs(corrs[0,0] + corrs[0,1] + corrs[1,0] - corrs[1,1]) = TT, TR, RT, RR : {S}")
+
+        # rehome all mounts
+        KMC.home()
+
