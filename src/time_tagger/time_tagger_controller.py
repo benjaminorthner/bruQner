@@ -9,7 +9,11 @@ from src.time_tagger import TT_Simulator
 
 class TimeTaggerController:
 
-    def __init__(self):
+    def __init__(self, KineticMountController:KineticMountControl = None):
+
+        # if specified connect to kinetic mount controller
+        self.KMC = KineticMountController
+
         # connect to tagger device, get input channels and set trigger levels
         self.tagger = TimeTagger.createTimeTagger()
         input_channels = self.tagger.getChannelList(TimeTagger.ChannelEdge.Rising)
@@ -32,6 +36,9 @@ class TimeTaggerController:
         self.assigned_channels['Bob_T'] = channel
     def set_bob_reflection_channel(self, channel):
         self.assigned_channels['Bob_R'] = channel
+
+    def setKineticMountController(self, KMC:KineticMountControl):
+        self.KMC = KMC
 
     def displayCountTraces(self, channels=None, channel_names=None, binwidth_SI=0.1, n_values=1000):
         """
@@ -177,10 +184,10 @@ class TimeTaggerController:
 
         return np.array([counter.getData(rolling=False)[0][-1] for counter in counters], dtype=int)
 
-    def measureS(self, KMC: KineticMountControl, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None):
+    def measureS(self, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None, debug=True):
 
         # home all kinetic mounts
-        KMC.home() 
+        self.KMC.home() 
         
         # create the virtual channels
         names = self.createCoincidenceChannels(coincidence_window_SI)
@@ -221,7 +228,7 @@ class TimeTaggerController:
             for j, b_angle in enumerate(bob_angles):
                 
                 # rotates filters waits for them to finish rotating
-                KMC.rotate_simulataneously(a_angle, b_angle)
+                self.KMC.rotate_simulataneously(a_angle, b_angle)
 
                 # make a measurement (real or simulated) 
                 # [NTT, NTR, NRT, NRR]
@@ -232,27 +239,27 @@ class TimeTaggerController:
 
                 # calculate correlations 
                 corrs[i, j] = (N[0] - N[1] - N[2] + N[3]) / N.sum()
-                print(f"\ncorr[{'a' if i == 0 else 'A'},{'b' if j==0 else 'B'}] = {corrs[i, j]}")
-                print(f"\tN[{names[0]}]={N[0]}")
-                print(f"\tN[{names[1]}]={N[1]}")
-                print(f"\tN[{names[2]}]={N[2]}")
-                print(f"\tN[{names[3]}]={N[3]}")
+                if debug:
+                    print(f"\ncorr[{'a' if i == 0 else 'A'},{'b' if j==0 else 'B'}] = {corrs[i, j]}")
+                    print(f"\tN[{names[0]}]={N[0]}")
+                    print(f"\tN[{names[1]}]={N[1]}")
+                    print(f"\tN[{names[2]}]={N[2]}")
+                    print(f"\tN[{names[3]}]={N[3]}")
         
         # Calculate S
         S = np.abs(corrs[0,0] + corrs[0,1] + corrs[1,0] - corrs[1,1])
         print(f"\nS = abs(corrs[0,0] + corrs[0,1] + corrs[1,0] - corrs[1,1]) = {S}")
 
         # rehome all mounts
-        KMC.home()
+        self.KMC.home()
 
-    def measure_S_with_two_ports(self, ports:str, KMC:KineticMountControl, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None):
+    def measure_S_with_two_ports(self, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None, debug=True):
         """
         Does a bell measurement with 2 ports only simulates linear polarising filters using the Polarising beam splitter cubes together with the Half Wave Plates
-        -ports options : 'TT', 'RT', 'TR', 'RR', 'all_pairs'
         """
 
         # home all kinetic mounts
-        KMC.home() 
+        self.KMC.home() 
         
         # create the virtual channels
         names = self.createCoincidenceChannels(coincidence_window_SI)
@@ -265,6 +272,7 @@ class TimeTaggerController:
         alice_angles = CHSH_angles[0:2]
         bob_angles = CHSH_angles[2:4]
         corrs = np.zeros((4,2,2))
+        print(f"SPCM Pairs: {pair_names[:]}")
         for i, a_angle in enumerate(alice_angles):
             for j, b_angle in enumerate(bob_angles):
             
@@ -276,7 +284,7 @@ class TimeTaggerController:
                         new_a_angle = a_angle + a_angle_perp
                         new_b_angle = b_angle + b_angle_perp
                         # rotates filters waits for them to finish rotating
-                        KMC.rotate_simulataneously(new_a_angle, new_b_angle)
+                        self.KMC.rotate_simulataneously(new_a_angle, new_b_angle)
 
                         # make a measurement (real or simulated) 
                         # [NTT, NTR, NRT, NRR]
@@ -286,20 +294,22 @@ class TimeTaggerController:
                             N[:, 2*ii + jj] = TTSimulator.measure_n_entangled_pairs_filter_angles(5000, theta_a=new_a_angle, theta_b=new_b_angle)
 
                 # calculate correlations 
-                for pair in range(4):
-                    print(f"SPCM Pair: {pair_names[pair]}")
-                    corrs[pair, i, j] = (N[pair, 0] - N[pair, 1] - N[pair, 2] + N[pair, 3]) / N[pair,:].sum()
-                    print(f"\ncorr[{'a' if i == 0 else 'A'},{'b' if j==0 else 'B'}] = {corrs[pair, i, j]:.3f}")
-                    print(f"\tN[{names[0]}]={N[pair, 0]}")
-                    print(f"\tN[{names[1]}]={N[pair, 1]}")
-                    print(f"\tN[{names[2]}]={N[pair, 2]}")
-                    print(f"\tN[{names[3]}]={N[pair, 3]}")
-                    print('------------------------------')
+                corrs[:, i, j] = (N[:, 0] - N[:, 1] - N[:, 2] + N[:, 3]) / N.sum(axis=1)
+
+                # Debug Printing
+                if debug:
+                    a_angle_label = 'a' if i==0 else 'A'
+                    b_angle_label = 'b' if j==0 else 'B'
+                    print(f"\ncorr[{a_angle_label},{b_angle_label}] = {np.array([float(f'{corr:.3f}') for corr in corrs[:, i, j]])}")
+                    print(f"\tN[{a_angle_label} , {b_angle_label} ]={N[:, 0]}")
+                    print(f"\tN[{a_angle_label} , {b_angle_label}']={N[:, 1]}")
+                    print(f"\tN[{a_angle_label}', {b_angle_label} ]={N[:, 2]}")
+                    print(f"\tN[{a_angle_label}', {b_angle_label}']={N[:, 3]}")
         
         # Calculate S
         S = np.abs(corrs[:,0,0] + corrs[:,0,1] + corrs[:,1,0] - corrs[:,1,1])
         print(f"\nS = abs(corrs[0,0] + corrs[0,1] + corrs[1,0] - corrs[1,1]) = TT, TR, RT, RR : {S}")
 
         # rehome all mounts
-        KMC.home()
+        self.KMC.home()
 
