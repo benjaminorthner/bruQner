@@ -4,6 +4,7 @@ import time
 import signal
 import pandas as pd
 from ipywidgets import Output
+import logging
 
 
 
@@ -32,37 +33,35 @@ class OSCCommunicator:
         self.test_response_address = "/bruQner/connection_test/response"
 
         # handle received messages
-        #self.dispatcher.map(self.test_response_address, self._handle_test_response)
-        #self.dispatcher.map(self.measurement_address, self._handle_measurement)
+        self.dispatcher.map(self.test_response_address, self._handle_test_response)
+        self.dispatcher.map(self.measurement_address, self._handle_measurement)
 
-        # create output so that we can avoid cell rerunning issues
-        self.output = Output()
+        # Configure logging
+        logging.basicConfig(
+            filename='osc_log.txt',  # Log file name
+            level=logging.INFO,      # Logging level (INFO, DEBUG, etc.)
+            format='%(asctime)s - %(levelname)s - %(message)s'  # Log message format
+        )
 
-        # map handlers to output
-        self._map_handlers(self.output)
+        # Interrupt Signal handling
+        signal.signal(signal.SIGINT, lambda *args : self.shutdown())
+        signal.signal(signal.SIGTERM, lambda *args : self.shutdown())
 
-    def _map_handlers(self, output):
-        """
-        Handlers need to be passed the output object when created because they will be locked inside a thread
-        """
-        self.dispatcher.map(self.test_response_address, lambda address, *args: self._handle_test_response(output, address,*args))
-        self.dispatcher.map(self.measurement_address, lambda address, *args: self._handle_measurement(output, address, *args))
+    # log both to file and to terminal
+    def log(self, message:str):
+        logging.info(message)
+        print(message)
 
     def start_server(self):
         # only start if not already running
         if self.server is None:
             
-            # show output in the cell where this was called
-            display(self.output) 
-
             # create server (to receive responses)
             self.server = osc_server.ThreadingOSCUDPServer((self.my_ip, self.my_port), self.dispatcher)
 
-            # print to output
             started_string = f"OSC Server Started. Serving on {self.server.server_address}"
-            with self.output:
-                print(started_string)
-                print('-' * len(started_string), end='\n\n')
+            self.log(started_string)
+            self.log('-' * len(started_string))
             
             # start server in thread to always be receiving in background
             self.server_thread = threading.Thread(target=self.server.serve_forever)
@@ -72,31 +71,28 @@ class OSCCommunicator:
         if self.server:
             self.server.shutdown()
             self.server_thread.join()
-            with self.output:
-                print("Shutdown completed")
+            self.log("Shutdown completed")
 
             # delete server 
             delattr(self, 'server')
             self.server = None
+            self.log("Shutting down OSC server...")
 
     def send_measurement(self, target:OSCTarget, measurement_results):
         target.client.send_message("/bruQner/measurement_result", measurement_results)
-        print(f'Measurement {measurement_results} sent to {target.name}')
+        self.log(f'Measurement {measurement_results} sent to {target.name}')
 
     def send_test_request(self, target:OSCTarget):
         target.client.send_message(self.test_request_address, '1')
-        print(f'Test request sent to "{target.name}"')
+        self.log(f'Test request sent to "{target.name}"')
 
     # mainly for testing because I will never have to actually send test responses
     def send_test_response(self, target:OSCTarget):
         target.client.send_message(self.test_response_address, '1')
 
     # Handlers for received messages
-    def _handle_test_response(self, output, address, *args):
-        with output:
-            print("Test successful")
+    def _handle_test_response(self, address, *args):
+        self.log("Test successful")
 
-    def _handle_measurement(self, output, address, *args):
-        with output:
-            print(f"Received measurement: {args}")
-
+    def _handle_measurement(self, address, *args):
+        self.log(f"Received measurement: {args}")

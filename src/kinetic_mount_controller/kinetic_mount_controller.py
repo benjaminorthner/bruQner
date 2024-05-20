@@ -130,8 +130,7 @@ class KineticMountControl:
         self.alice, self.bob = self.bob, self.alice
 
     def home(self):
-        self.alice.home()
-        self.bob.home()
+        self.rotate_simulataneously(alice_angle=0, bob_angle=0)
         self.shutter.open()
         
 

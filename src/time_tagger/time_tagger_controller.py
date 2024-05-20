@@ -112,7 +112,7 @@ class TimeTaggerController:
 
             except asyncio.CancelledError: # gracefully handle cancellation
                 break
-    
+                
     def _stop_and_close_figure(self, task, fig, output_container):
         # stop the update task
         task.cancel()
@@ -125,6 +125,68 @@ class TimeTaggerController:
         # delete coincidence channels if they exist
         if hasattr(self, 'coincidences_vchannels'):
             delattr(self, 'coincidences_vchannels')
+
+    def _getDelays(self, referenceChannel, adjustmentChannels):
+
+        # Create SynchronizedMeasurements to operate on the same time tags.
+        sm = TimeTagger.SynchronizedMeasurements(self.tagger)
+
+        #Create Correlation measurements
+        corr_list = list()
+        for ch in adjustmentChannels:
+            corr_list.append(
+                TimeTagger.Correlation(sm.getTagger(), referenceChannel, ch, binwidth=1, n_bins=5000)
+            )
+
+        # Adjust mirrors so that all 4 channels have coincidences
+        self.KMC.rotate_simulataneously(22.5, 0)
+        sleep(1)
+
+        # Start measurements and accumulate data for 2 second
+        sm.startFor(int(2e12), clear=True)
+        sm.waitUntilFinished()
+
+        # Determine delays
+        delays = list()
+        for corr in corr_list:
+            hist_t = corr.getIndex()
+            hist_c = corr.getData()
+            #Identify the delay as the center of the histogram through a weighted average
+            dt = np.sum(hist_t * hist_c) / np.sum(hist_c)
+            delays.append(int(dt))
+
+        return delays
+
+    def performDelayAdjustment(self, set=True):
+        """
+        Set alice and bob angles so that all 4 coincidence channels are showing non zero coincidences
+        NOTE: have to perform two rounds of delay adjustments because can not just choose one reference since channels in same arm never see coincidences
+        """
+
+        alice_channels = [ self.assigned_channels['Alice_T'], self.assigned_channels['Alice_R']]
+        bob_channels = [ self.assigned_channels['Bob_T'], self.assigned_channels['Bob_R']]
+
+        Tdelays = self._getDelays(self.assigned_channels['Alice_T'], bob_channels)
+        Rdelays = self._getDelays(self.assigned_channels['Alice_R'], bob_channels)
+
+        print(Tdelays)
+        print(Rdelays)
+
+        C_AT = 0 # reference
+        C_BT = -Tdelays[0] # -D_TT
+        C_BR = -Tdelays[1] # -D_Tr
+        C_AR =  Rdelays[0] - Tdelays[0] # D_RT - D_TT
+
+        C = [C_AT, C_AR, C_BT, C_BR]
+        print(C)
+        #Compensate the delays to align the signals
+        if set:
+            for ch, dt in zip([*alice_channels, *bob_channels], C):
+                currentDelay = self.tagger.getInputDelay(ch)
+                newDelay = int(currentDelay - dt)
+                self.tagger.setInputDelay(ch, newDelay)
+        
+        self.KMC.home()
 
     def createCoincidenceChannels(self, coincidence_window_SI):
         """
@@ -184,7 +246,7 @@ class TimeTaggerController:
 
         return np.array([counter.getData(rolling=False)[0][-1] for counter in counters], dtype=int)
 
-    def measureS(self, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None, debug=True):
+    def measureS(self, CHSH_angles, coincidence_window_SI = 0.1e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None, debug=True):
 
         # home all kinetic mounts
         self.KMC.home() 

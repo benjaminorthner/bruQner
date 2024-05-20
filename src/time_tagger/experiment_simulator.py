@@ -55,8 +55,8 @@ class TT_Simulator:
         
         # apply depolarizing noise (1-noise)*rho + noise * I, where noise from 0 to 1
         # then renormalise for trace to be 1
-        #self.initial_state_density = (1-self.initial_state_noise) * self.initial_state_density + self.initial_state_noise * sp.eye(4)
-        #self.initial_state_density *= 1/Tr(self.initial_state_density)
+        self.initial_state_density = (1-self.initial_state_noise) * self.initial_state_density + self.initial_state_noise * sp.eye(4)
+        self.initial_state_density *= 1/Tr(self.initial_state_density)
 
         self.correlation_function = self.find_correlation_function(self.initial_state_density)
         self.S, self.CHSH_angles = self.find_CHSH_angles(self.initial_state_density)
@@ -165,7 +165,7 @@ class TT_Simulator:
         ]))
 
     
-    def measure_entangled_pair(self, theta_a, theta_b) -> int:
+    def _measure_entangled_pair(self, theta_a, theta_b) -> int:
         """
         Returns 0, 1, 2, 3 depending on which coincidence was triggered
         0:HH, 1:HV, 2:VH, 3:VV 
@@ -182,7 +182,7 @@ class TT_Simulator:
 
         N = np.array([0, 0, 0, 0], dtype=int)
         for _ in range(n):
-            activated_output = self.measure_entangled_pair(theta_a, theta_b)
+            activated_output = self._measure_entangled_pair(theta_a, theta_b)
             N[activated_output] += 1
         
         return N

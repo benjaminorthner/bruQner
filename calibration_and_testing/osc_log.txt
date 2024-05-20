@@ -1,0 +1,134 @@
+2024-05-19 17:12:46,295 - INFO - OSC Server Started. Serving on ('128.131.195.250', 7401)
+2024-05-19 17:13:02,563 - INFO - OSC Server Started. Serving on ('128.131.195.250', 7401)
+2024-05-19 17:13:02,564 - INFO - --------------------------------------------------------
+2024-05-19 17:13:02,601 - INFO - Measurement [1, 2, 3, 4] sent to Myself
+2024-05-19 17:13:02,601 - INFO - Received measurement: (1, 2, 3, 4)
+2024-05-19 17:13:02,621 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:13:02,623 - INFO - Received measurement: (1,)
+2024-05-19 17:13:02,624 - INFO - Test request sent to "Myself"
+2024-05-19 17:13:02,626 - INFO - Test successful
+2024-05-19 17:14:30,684 - INFO - OSC Server Started. Serving on ('128.131.195.250', 7401)
+2024-05-19 17:14:30,684 - INFO - --------------------------------------------------------
+2024-05-19 17:14:30,710 - INFO - Measurement [1, 2, 3, 4] sent to Myself
+2024-05-19 17:14:30,710 - INFO - Received measurement: (1, 2, 3, 4)
+2024-05-19 17:14:30,733 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:14:30,734 - INFO - Received measurement: (1,)
+2024-05-19 17:14:30,734 - INFO - Test request sent to "Myself"
+2024-05-19 17:14:30,735 - INFO - Test successful
+2024-05-19 17:14:43,006 - INFO - Measurement [1, 2, 3, 4] sent to Myself
+2024-05-19 17:14:43,007 - INFO - Received measurement: (1, 2, 3, 4)
+2024-05-19 17:14:47,400 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:14:47,401 - INFO - Received measurement: (1,)
+2024-05-19 17:14:47,401 - INFO - Test request sent to "Myself"
+2024-05-19 17:14:47,402 - INFO - Test successful
+2024-05-19 17:14:48,602 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:14:48,603 - INFO - Received measurement: (1,)
+2024-05-19 17:14:48,603 - INFO - Test request sent to "Myself"
+2024-05-19 17:14:48,604 - INFO - Test successful
+2024-05-19 17:15:05,897 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:15:05,898 - INFO - Received measurement: (1,)
+2024-05-19 17:15:05,899 - INFO - Test request sent to "Myself"
+2024-05-19 17:15:05,901 - INFO - Test successful
+2024-05-19 17:18:18,030 - INFO - OSC Server Started. Serving on ('128.131.195.250', 7401)
+2024-05-19 17:18:18,030 - INFO - --------------------------------------------------------
+2024-05-19 17:18:18,057 - INFO - Measurement [1, 2, 3, 4] sent to Myself
+2024-05-19 17:18:18,058 - INFO - Received measurement: (1, 2, 3, 4)
+2024-05-19 17:18:18,098 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:18:18,098 - INFO - Received measurement: (1,)
+2024-05-19 17:18:18,099 - INFO - Test request sent to "Myself"
+2024-05-19 17:18:18,102 - INFO - Test successful
+2024-05-19 17:21:06,048 - INFO - OSC Server Started. Serving on ('128.131.195.250', 7401)
+2024-05-19 17:21:06,049 - INFO - --------------------------------------------------------
+2024-05-19 17:21:06,072 - INFO - Measurement [1, 2, 3, 4] sent to Myself
+2024-05-19 17:21:06,073 - INFO - Received measurement: (1, 2, 3, 4)
+2024-05-19 17:21:06,107 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:21:06,107 - INFO - Received measurement: (1,)
+2024-05-19 17:21:06,108 - INFO - Test request sent to "Myself"
+2024-05-19 17:21:06,109 - INFO - Test successful
+2024-05-19 17:21:09,010 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:21:09,010 - INFO - Received measurement: (1,)
+2024-05-19 17:21:09,011 - INFO - Test request sent to "Myself"
+2024-05-19 17:21:09,012 - INFO - Test successful
+2024-05-19 17:21:11,546 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:21:11,547 - INFO - Received measurement: (1,)
+2024-05-19 17:21:11,547 - INFO - Test request sent to "Myself"
+2024-05-19 17:21:11,550 - INFO - Test successful
+2024-05-19 17:21:13,536 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:21:13,536 - INFO - Received measurement: (1,)
+2024-05-19 17:21:13,537 - INFO - Test request sent to "Myself"
+2024-05-19 17:21:13,538 - INFO - Test successful
+2024-05-19 17:21:15,139 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:21:15,139 - INFO - Received measurement: (1,)
+2024-05-19 17:21:15,140 - INFO - Test request sent to "Myself"
+2024-05-19 17:21:15,143 - INFO - Test successful
+2024-05-19 17:21:16,875 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:21:16,875 - INFO - Received measurement: (1,)
+2024-05-19 17:21:16,876 - INFO - Test request sent to "Myself"
+2024-05-19 17:21:16,877 - INFO - Test successful
+2024-05-19 17:21:19,623 - INFO - Measurement [1, 2, 3, 4] sent to Myself
+2024-05-19 17:21:19,623 - INFO - Received measurement: (1, 2, 3, 4)
+2024-05-19 17:21:21,430 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:21:21,430 - INFO - Received measurement: (1,)
+2024-05-19 17:21:21,432 - INFO - Test request sent to "Myself"
+2024-05-19 17:21:21,433 - INFO - Test successful
+2024-05-19 17:21:23,113 - INFO - Measurement [1, 2, 3, 4] sent to Myself
+2024-05-19 17:21:23,114 - INFO - Received measurement: (1, 2, 3, 4)
+2024-05-19 17:23:51,545 - INFO - OSC Server Started. Serving on ('128.131.195.250', 7401)
+2024-05-19 17:23:51,546 - INFO - --------------------------------------------------------
+2024-05-19 17:25:22,979 - INFO - OSC Server Started. Serving on ('128.131.195.250', 7401)
+2024-05-19 17:25:22,980 - INFO - --------------------------------------------------------
+2024-05-19 17:25:25,524 - INFO - Shutdown completed
+2024-05-19 17:25:25,525 - INFO - Shutting down OSC server...
+2024-05-19 17:26:18,218 - INFO - OSC Server Started. Serving on ('128.131.195.250', 7401)
+2024-05-19 17:26:18,219 - INFO - --------------------------------------------------------
+2024-05-19 17:26:18,273 - INFO - Measurement [1, 2, 3, 4] sent to Myself
+2024-05-19 17:26:18,273 - INFO - Received measurement: (1, 2, 3, 4)
+2024-05-19 17:26:18,319 - INFO - Measurement [1] sent to Myself
+2024-05-19 17:26:18,319 - INFO - Received measurement: (1,)
+2024-05-19 17:26:18,320 - INFO - Test request sent to "Myself"
+2024-05-19 17:26:18,321 - INFO - Test successful
+2024-05-19 17:36:29,381 - INFO - OSC Server Started. Serving on ('128.131.195.250', 7401)
+2024-05-19 17:36:29,382 - INFO - --------------------------------------------------------
+2024-05-19 17:36:29,441 - INFO - Measurement [1, 2, 3, 4] sent to Myself
+2024-05-19 17:36:29,442 - INFO - Received measurement: (1, 2, 3, 4)
+2024-05-19 18:26:48,009 - INFO - Measurement [[2, 1]] sent to Clemens
+2024-05-19 18:29:17,834 - INFO - Measurement [2, 2, -1, 1] sent to Clemens
+2024-05-19 18:29:21,225 - INFO - Measurement [1, 2, 1, 1] sent to Clemens
+2024-05-19 18:29:23,983 - INFO - Measurement [1, 1, -1, -1] sent to Clemens
+2024-05-19 18:29:26,218 - INFO - Measurement [1, 2, -1, -1] sent to Clemens
+2024-05-19 18:31:04,937 - INFO - Measurement [2, 2, 1, 1] sent to Clemens
+2024-05-19 18:31:21,441 - INFO - Measurement [2, 2, -1, -1] sent to Clemens
+2024-05-19 18:31:22,833 - INFO - Measurement [1, 1, -1, -1] sent to Clemens
+2024-05-19 18:31:24,210 - INFO - Measurement [1, 1, 1, 1] sent to Clemens
+2024-05-19 18:31:25,719 - INFO - Measurement [2, 1, 1, -1] sent to Clemens
+2024-05-19 18:31:31,624 - INFO - Measurement [2, 1, -1, 1] sent to Clemens
+2024-05-19 18:31:36,242 - INFO - Measurement [1, 1, -1, -1] sent to Clemens
+2024-05-19 18:31:38,703 - INFO - Measurement [1, 1, 1, 1] sent to Clemens
+2024-05-19 18:31:40,154 - INFO - Measurement [2, 1, 1, -1] sent to Clemens
+2024-05-19 18:31:42,376 - INFO - Measurement [1, 1, 1, 1] sent to Clemens
+2024-05-19 18:31:44,691 - INFO - Measurement [2, 1, 1, -1] sent to Clemens
+2024-05-19 18:31:58,541 - INFO - Measurement [2, 1, -1, 1] sent to Clemens
+2024-05-19 18:33:36,680 - INFO - Measurement [1, 1, -1, -1] sent to Clemens
+2024-05-19 18:33:42,834 - INFO - Measurement [2, 1, -1, 1] sent to Clemens
+2024-05-19 18:33:45,003 - INFO - Measurement [2, 1, -1, -1] sent to Clemens
+2024-05-19 18:33:51,702 - INFO - Measurement [1, 2, -1, -1] sent to Clemens
+2024-05-19 18:33:53,487 - INFO - Measurement [2, 2, 1, -1] sent to Clemens
+2024-05-19 18:33:54,523 - INFO - Measurement [2, 1, 1, -1] sent to Clemens
+2024-05-19 18:33:55,296 - INFO - Measurement [1, 2, 1, 1] sent to Clemens
+2024-05-19 18:33:55,989 - INFO - Measurement [1, 2, -1, -1] sent to Clemens
+2024-05-19 18:33:56,779 - INFO - Measurement [2, 2, -1, 1] sent to Clemens
+2024-05-19 18:33:57,484 - INFO - Measurement [2, 2, -1, 1] sent to Clemens
+2024-05-19 18:33:58,163 - INFO - Measurement [2, 1, -1, -1] sent to Clemens
+2024-05-19 18:33:58,852 - INFO - Measurement [1, 2, 1, -1] sent to Clemens
+2024-05-19 18:33:59,550 - INFO - Measurement [2, 1, -1, -1] sent to Clemens
+2024-05-19 18:34:00,164 - INFO - Measurement [2, 1, -1, -1] sent to Clemens
+2024-05-19 18:34:00,869 - INFO - Measurement [2, 1, -1, -1] sent to Clemens
+2024-05-19 18:34:01,494 - INFO - Measurement [1, 2, -1, 1] sent to Clemens
+2024-05-19 18:34:02,100 - INFO - Measurement [2, 2, -1, 1] sent to Clemens
+2024-05-19 18:34:02,730 - INFO - Measurement [2, 1, -1, -1] sent to Clemens
+2024-05-19 18:34:03,379 - INFO - Measurement [1, 2, 1, 1] sent to Clemens
+2024-05-19 18:54:36,828 - INFO - Measurement [2, 1, 1, 1] sent to Clemens
+2024-05-19 19:00:41,179 - WARNING - No such comm: c5af1759fbf14c3a9f092969dce52c33
+2024-05-19 19:00:41,282 - WARNING - No such comm: c5af1759fbf14c3a9f092969dce52c33
+2024-05-19 19:00:54,963 - WARNING - No such comm: c2d0ac0e087f40699930347b0fc95b19
+2024-05-19 19:00:55,061 - WARNING - No such comm: c2d0ac0e087f40699930347b0fc95b19
