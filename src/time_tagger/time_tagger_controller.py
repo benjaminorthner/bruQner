@@ -222,7 +222,7 @@ class TimeTaggerController:
             missing_key = e.args[0]
             raise RuntimeError(f"Error: Channel '{missing_key}' has not been assigned yet") from e
 
-    def displayCoincidenceTraces(self, coincidence_window_SI = 30e-9, binwidth_SI=0.1, n_values=1000):
+    def displayCoincidenceTraces(self, coincidence_window_SI = 0.5e-9, binwidth_SI=0.1, n_values=1000):
 
         # make sure coincidence channels are created and exist
         self.createCoincidenceChannels(coincidence_window_SI)

@@ -27,9 +27,9 @@ class KineticMountControl:
     def _print_successfull_connection(self, device_info):
         motor_type = device_info['info']['Motor Type']
         description = elliptec.devices[motor_type]['description']
-        print(f"Device succesfully connected ({description})")
+        print(f"Device succesfully connected ({description}) (Address: {device_info['info']['Address']})")
 
-    def __init__(self, number_of_devices) -> None:
+    def __init__(self, number_of_devices, address_search_depth=3) -> None:
         
         # initialise list of elliptec controllers
         self.controllers = []
@@ -56,7 +56,7 @@ class KineticMountControl:
         # get devices from controllers and assign
         for controller in self.controllers:
             
-            device = self._get_connected_device(controller, stop_address=3)
+            device = self._get_connected_device(controller, stop_address=address_search_depth)
 
             motor_type = device['info']['Motor Type']
             address = device['info']['Address']
