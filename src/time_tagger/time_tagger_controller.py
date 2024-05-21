@@ -28,6 +28,10 @@ class TimeTaggerController:
             'Bob_R': None
         }
 
+        self.coincidences_vchannels = None
+        self.coincidence_channel_names = None
+        self.coincidence_window_SI = 0.5e-9
+
     def set_alice_transmission_channel(self, channel):
         self.assigned_channels['Alice_T'] = channel
     def set_alice_reflection_channel(self, channel):
@@ -36,7 +40,7 @@ class TimeTaggerController:
         self.assigned_channels['Bob_T'] = channel
     def set_bob_reflection_channel(self, channel):
         self.assigned_channels['Bob_R'] = channel
-
+    
     def setKineticMountController(self, KMC:KineticMountControl):
         self.KMC = KMC
 
@@ -123,8 +127,9 @@ class TimeTaggerController:
         output_container.clear_output()
 
         # delete coincidence channels if they exist
-        if hasattr(self, 'coincidences_vchannels'):
-            delattr(self, 'coincidences_vchannels')
+        #if hasattr(self, 'coincidences_vchannels'):
+        #    delattr(self, 'coincidences_vchannels')
+        #    self.coincidences_vchannels = None
 
     def _getDelays(self, referenceChannel, adjustmentChannels):
 
@@ -192,23 +197,25 @@ class TimeTaggerController:
         """
         crates coincidence virtual channels and returns list of channelnames
         """
-
         # make coincidence groups
         try:
             groups = [(self.assigned_channels['Alice_T'], self.assigned_channels['Bob_T']), 
-                      (self.assigned_channels['Alice_T'], self.assigned_channels['Bob_R']),
-                      (self.assigned_channels['Alice_R'], self.assigned_channels['Bob_T']),
-                      (self.assigned_channels['Alice_R'], self.assigned_channels['Bob_R']),
+                    (self.assigned_channels['Alice_T'], self.assigned_channels['Bob_R']),
+                    (self.assigned_channels['Alice_R'], self.assigned_channels['Bob_T']),
+                    (self.assigned_channels['Alice_R'], self.assigned_channels['Bob_R']),
             ]
             
-            channel_names = ['|T,T>', '|T,R>', '|R,T>', '|R,R>']
+            self.coincidence_channel_names = ['|T,T>', '|T,R>', '|R,T>', '|R,R>']
 
             # 30ns coincidence window if want to match qutools (coincidence window is in ps)
             # NOTE vchannels need to be a an instance variable (with self.) because otherwise they get auto deleted after some time and no longer exist
             # This means we need to delete them manually when we stop looking at coincidences otherwise they keep existing in the background
             self.coincidences_vchannels = TimeTagger.Coincidences(self.tagger, groups, coincidenceWindow=coincidence_window_SI * 1e12)
 
-            return channel_names
+            # make translation dict from channel number to 0:TT, 1:TR, 2:RT, 3:RR
+            self.coincidence_channel_dictionary = {}
+            for i, vch in enumerate(self.coincidences_vchannels.getChannels()):
+                self.coincidence_channel_dictionary[vch] = i
 
         # in case channels are not yet assigned 
         except KeyError as e:
@@ -217,11 +224,11 @@ class TimeTaggerController:
 
     def displayCoincidenceTraces(self, coincidence_window_SI = 30e-9, binwidth_SI=0.1, n_values=1000):
 
-        # create coincidence channels which are saved in instance variable (names are retured)
-        channel_names = self.createCoincidenceChannels(coincidence_window_SI)
+        # make sure coincidence channels are created and exist
+        self.createCoincidenceChannels(coincidence_window_SI)
 
         # display traces of coincidences
-        self.displayCountTraces(channels=self.coincidences_vchannels.getChannels(), channel_names=channel_names, binwidth_SI=binwidth_SI, n_values=n_values)
+        self.displayCountTraces(channels=self.coincidences_vchannels.getChannels(), channel_names=self.coincidence_channel_names, binwidth_SI=binwidth_SI, n_values=n_values)
 
     def _createCounters(self, channels, binwidth_SI, n_values):
         counters = []
@@ -251,8 +258,8 @@ class TimeTaggerController:
         # home all kinetic mounts
         self.KMC.home() 
         
-        # create the virtual channels
-        names = self.createCoincidenceChannels(coincidence_window_SI)
+        # make sure coincidence channels are created and exist
+        self.createCoincidenceChannels(coincidence_window_SI)
 
         # create a counter for each virtual coincidence channel
         counters = self._createCounters(channels=self.coincidences_vchannels.getChannels(), binwidth_SI=integration_time_per_basis_setting_SI, n_values=1)
@@ -303,10 +310,10 @@ class TimeTaggerController:
                 corrs[i, j] = (N[0] - N[1] - N[2] + N[3]) / N.sum()
                 if debug:
                     print(f"\ncorr[{'a' if i == 0 else 'A'},{'b' if j==0 else 'B'}] = {corrs[i, j]}")
-                    print(f"\tN[{names[0]}]={N[0]}")
-                    print(f"\tN[{names[1]}]={N[1]}")
-                    print(f"\tN[{names[2]}]={N[2]}")
-                    print(f"\tN[{names[3]}]={N[3]}")
+                    print(f"\tN[{self.coincidence_channel_names[0]}]={N[0]}")
+                    print(f"\tN[{self.coincidence_channel_names[1]}]={N[1]}")
+                    print(f"\tN[{self.coincidence_channel_names[2]}]={N[2]}")
+                    print(f"\tN[{self.coincidence_channel_names[3]}]={N[3]}")
         
         # Calculate S
         S = np.abs(corrs[0,0] + corrs[0,1] + corrs[1,0] - corrs[1,1])
@@ -324,7 +331,8 @@ class TimeTaggerController:
         self.KMC.home() 
         
         # create the virtual channels
-        names = self.createCoincidenceChannels(coincidence_window_SI)
+        self.createCoincidenceChannels(coincidence_window_SI)
+
         pair_names = ['TT', 'TR', 'RT', 'RR']
 
         # create a counter for each virtual coincidence channel
@@ -374,4 +382,37 @@ class TimeTaggerController:
 
         # rehome all mounts
         self.KMC.home()
+
+    def get_single_measurement(self, theta_a, theta_b, integration_time=0.1, coincidence_window_SI=0.5e-9) -> int:
+        """
+        returns 0, 1, 2, 3 for (TT, TR, RT, RR)
+        """
+
+        self.KMC.rotate_simulataneously(theta_a, theta_b)
+
+        eventsByChannel = []
+        attemptCounter = 0
+        maxAttempts = 10
+        while len(eventsByChannel) == 0:
+
+            stream = TimeTagger.TimeTagStream(tagger=self.tagger, n_max_events=1000, channels=self.coincidences_vchannels.getChannels())
+            sleep(integration_time)
+            streamData = stream.getData()
+            eventsByChannel = streamData.getChannels()
+            stream.stop()
+
+            # check if anything was measured
+            if attemptCounter >= maxAttempts:
+                return -1
+
+            if len(eventsByChannel) == 0:
+                sleep(0.1)
+            else:
+                break
+
+            
+        # pick out the final event from the set (to prevent startup issues with first event)
+        pickedCoincidence = self.coincidence_channel_dictionary[eventsByChannel[-1]]
+        return pickedCoincidence
+
 
