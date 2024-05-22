@@ -44,7 +44,7 @@ class TimeTaggerController:
     def setKineticMountController(self, KMC:KineticMountControl):
         self.KMC = KMC
 
-    def displayCountTraces(self, channels=None, channel_names=None, binwidth_SI=0.1, n_values=1000):
+    def displayCountTraces(self, channels=None, channel_names=None, binwidth_SI=0.1, n_values=1000, trace_width=2, plot_title=None):
         """
         Written to work in an Ipython/Jupyter type environment only
         """
@@ -71,8 +71,18 @@ class TimeTaggerController:
             
         # add scatter for each virtual channel
         for trace, label in zip(traces, trace_labels):
-            fig.add_scatter(x=trace.getIndex(), y=trace.getData()[0], name=f"{label}")
+            fig.add_scatter(x=trace.getIndex(), y=trace.getData()[0], name=f"{label}", line=dict(width=trace_width))
 
+        fig.update_layout(
+            xaxis_title='Time',
+            yaxis_title='Counts / s',
+            title=plot_title,
+            title_font_size=25,
+            xaxis_title_font_size=18,
+            yaxis_title_font_size=18,
+            font=dict(size=16) # ticklabels
+
+        )
         # this is just here so that if a cell gets rerun while a trace is already running 
         # the already running trace will get cancelled first
         try:
@@ -222,13 +232,13 @@ class TimeTaggerController:
             missing_key = e.args[0]
             raise RuntimeError(f"Error: Channel '{missing_key}' has not been assigned yet") from e
 
-    def displayCoincidenceTraces(self, coincidence_window_SI = 0.5e-9, binwidth_SI=0.1, n_values=1000):
+    def displayCoincidenceTraces(self, coincidence_window_SI = 0.5e-9, **kwargs):#, binwidth_SI=0.1, n_values=1000,):
 
         # make sure coincidence channels are created and exist
         self.createCoincidenceChannels(coincidence_window_SI)
 
         # display traces of coincidences
-        self.displayCountTraces(channels=self.coincidences_vchannels.getChannels(), channel_names=self.coincidence_channel_names, binwidth_SI=binwidth_SI, n_values=n_values)
+        self.displayCountTraces(channels=self.coincidences_vchannels.getChannels(), channel_names=self.coincidence_channel_names, **kwargs) #binwidth_SI=binwidth_SI, n_values=n_values)
 
     def _createCounters(self, channels, binwidth_SI, n_values):
         counters = []
@@ -322,7 +332,7 @@ class TimeTaggerController:
         # rehome all mounts
         self.KMC.home()
 
-    def measure_S_with_two_ports(self, CHSH_angles, coincidence_window_SI = 30e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None, debug=True):
+    def measure_S_with_two_ports(self, CHSH_angles, coincidence_window_SI = 0.5e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None, debug=True):
         """
         Does a bell measurement with 2 ports only simulates linear polarising filters using the Polarising beam splitter cubes together with the Half Wave Plates
         """
