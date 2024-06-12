@@ -4,6 +4,8 @@ from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
 import numpy
 import random
+import threading
+from pythonosc import dispatcher, osc_server
 
 # GLSL fragment shader source code
 fragment_shader_code = """
@@ -155,8 +157,34 @@ class AnimationManager:
         for i, animation in enumerate(self.animations):
             animation.render(shader_program, i)
 
+
+# OSC handler function
+def trigger_ring_handler(unused_addr, *args):
+    color = (random.random(), random.random(), random.random())
+    animation_manager.trigger_animation("ring", color)
+
+def trigger_line_handler(unused_addr, *args):
+    color = (random.random(), random.random(), random.random())
+    animation_manager.trigger_animation("line", color)
+    
+def default_handler(addr, *args):
+    trigger_ring_handler(None)
+    print(f"Received OSC message: {addr} with arguments {args}")
+
+def start_osc_server():
+    disp = dispatcher.Dispatcher()
+    disp.map("/bruQner/visuals/ring", trigger_ring_handler)
+    disp.map("/bruQner/visuals/line", trigger_line_handler)
+    disp.set_default_handler(default_handler)
+    
+    server = osc_server.ThreadingOSCUDPServer(("192.168.0.10", 4701), disp)
+    print("Serving on {}".format(server.server_address))
+    server.serve_forever()
+
+
 # Main loop
 def main():
+    global animation_manager
     screen = init_pygame_opengl()
     shader_program = create_shader_program()
     glUseProgram(shader_program)
@@ -178,6 +206,11 @@ def main():
     iMouse = glGetUniformLocation(shader_program, "iMouse")
 
     animation_manager = AnimationManager()
+
+    # Start OSC server in a separate thread
+    osc_thread = threading.Thread(target=start_osc_server)
+    osc_thread.daemon = True
+    osc_thread.start()
 
     running = True
     while running:
