@@ -9,14 +9,18 @@ import random
 fragment_shader_code = """
 #version 330 core
 
-#define MAX_ANIMATIONS 100
+#define MAX_ANIMATIONS 30
 
 uniform vec2 iResolution;
 uniform float iTime;
 uniform int animationCount; // Number of active animations
 uniform int animationTypes[MAX_ANIMATIONS]; // 0 for ring, 1 for line
 uniform vec3 animationColors[MAX_ANIMATIONS];
+
 uniform float animationStartTimes[MAX_ANIMATIONS];
+uniform float ringSizes[MAX_ANIMATIONS];
+uniform float ringOpacities[MAX_ANIMATIONS];
+uniform float ringThicknesses[MAX_ANIMATIONS];
 
 out vec4 fragColor;
 
@@ -31,17 +35,14 @@ void main()
     vec3 color = vec3(0.0);
 
     for (int i = 0; i < animationCount; i++) {
-        if (animationTypes[i] == 0) { 
-            // Ring Animation
+        if (animationTypes[i] == 0) { // Ring Animation
             float dist = length(uv - center);
-            float ringTime = time - animationStartTimes[i];
-            float ringRadius = ringTime * 0.2; // Adjust scale as needed
-            float ringThickness = 0.02; // Adjust thickness as needed
+            float ringRadius = ringSizes[i];
+            float ringThickness = ringThicknesses[i];
             float alpha = step(ringRadius - ringThickness, dist) - step(ringRadius + ringThickness, dist);
-            color += animationColors[i] * alpha;
+            color += animationColors[i] * ringOpacities[i] * alpha;
 
-        } else if (animationTypes[i] == 1) { 
-            // Line Animation
+        } else if (animationTypes[i] == 1) { // Line Animation
             float lineTime = time - animationStartTimes[i];
             float y = uv.y;
             float alpha = step(0.0, y - lineTime * 0.2) - step(0.02, y - lineTime * 0.2); // Adjust thickness as needed
@@ -92,15 +93,31 @@ class Animation:
         pass
 
 class RingAnimation(Animation):
+    def __init__(self, start_time, color):
+        super().__init__(start_time, color)
+        self.size = 0.0
+        self.opacity = 1.0
+        self.thickness= 0.01
+
     def update(self, current_time):
-        # Example logic for completing an animation after a certain duration
-        if current_time - self.start_time > 5:  # Ring animation lasts 5 seconds
+        lifetime = 4 # time the ring is visible for
+        growth_speed = 0.1
+
+        elapsed_time = current_time - self.start_time
+        self.size = elapsed_time * growth_speed  # Scale factor for ring growth
+        self.opacity = (1 - (elapsed_time / lifetime)) ** 2 # sort of like exponential decay but slower
+
+        if elapsed_time > lifetime:  # finish animation after lifetime
             self.complete = True
 
     def render(self, shader_program, index):
         glUniform1i(glGetUniformLocation(shader_program, f"animationTypes[{index}]"), 0)
         glUniform3f(glGetUniformLocation(shader_program, f"animationColors[{index}]"), *self.color)
         glUniform1f(glGetUniformLocation(shader_program, f"animationStartTimes[{index}]"), self.start_time)
+        glUniform1f(glGetUniformLocation(shader_program, f"ringSizes[{index}]"), self.size)
+        glUniform1f(glGetUniformLocation(shader_program, f"ringOpacities[{index}]"), self.opacity)
+        glUniform1f(glGetUniformLocation(shader_program, f"ringThicknesses[{index}]"), self.thickness)
+        
 
 class LineAnimation(Animation):
     def update(self, current_time):
@@ -193,4 +210,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
