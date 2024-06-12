@@ -210,9 +210,9 @@ class TimeTaggerController:
         # make coincidence groups
         try:
             groups = [(self.assigned_channels['Alice_T'], self.assigned_channels['Bob_T']), 
-                    (self.assigned_channels['Alice_T'], self.assigned_channels['Bob_R']),
-                    (self.assigned_channels['Alice_R'], self.assigned_channels['Bob_T']),
-                    (self.assigned_channels['Alice_R'], self.assigned_channels['Bob_R']),
+                     (self.assigned_channels['Alice_T'], self.assigned_channels['Bob_R']),
+                     (self.assigned_channels['Alice_R'], self.assigned_channels['Bob_T']),
+                     (self.assigned_channels['Alice_R'], self.assigned_channels['Bob_R']),
             ]
             
             self.coincidence_channel_names = ['|T,T>', '|T,R>', '|R,T>', '|R,R>']

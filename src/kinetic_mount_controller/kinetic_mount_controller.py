@@ -89,6 +89,18 @@ class KineticMountControl:
     # TODO: Shutter needs to be calibrated to open, and then only referred to as classical or quantum
     def toggle_shutter():
         pass
+    
+    def rotate_alice(self, angle):
+        """Multithreaded rotate of Alice filter"""
+        thread = threading.Thread(target=self.alice.set_angle, args=(angle,))
+        thread.start()
+        thread.join()
+
+    def rotate_bob(self, angle):
+        """Multithreaded rotate of Bob filter"""
+        thread = threading.Thread(target=self.bob.set_angle, args=(angle,))
+        thread.start()
+        thread.join()
 
     def rotate_simulataneously(self, alice_angle, bob_angle):
         """
@@ -109,15 +121,22 @@ class KineticMountControl:
 
     # TEST FUNCTIONS
     def wiggle_test(self, rotator):
-        "Wiggle rotator back and forth a couple times" 
-        if rotator == "alice":
-            ro = self.alice
-        elif rotator == "bob":
-            ro = self.bob
+        """
+        Wiggle rotator back and forth a couple times
+        parameters: rotator = ['alice', 'bob']
+        """
 
-        initial_angle = ro.get_angle()
+        initial_alice = self.alice.get_angle()
+        initial_bob = self.bob.get_angle()
+
         for i in range(2*3):
-            ro.set_angle(initial_angle + (-1)*(i%2) * 45)
+            wiggle_angle = (-1)*(i%2) * 45
+
+            if rotator.lower() == "alice":
+                self.rotate_alice(initial_alice + wiggle_angle)
+            elif rotator.lower() == "bob":
+                self.rotate_bob(initial_bob + wiggle_angle)
+
             time.sleep(0.3)
 
     def alice_check(self):
