@@ -81,6 +81,10 @@ class OSCCommunicator:
     def send_measurement(self, target:OSCTarget, measurement_results):
         target.client.send_message("/bruQner/measurement_result", measurement_results)
         self.log(f'Measurement {measurement_results} sent to {target.name}')
+    
+    def send_visuals(self, target:OSCTarget, measurement_results):
+        target.client.send_message("/bruQner/visuals/setup_measurement", measurement_results)
+        self.log(f'Measurement {measurement_results} sent to {target.name}')
 
     def send_test_request(self, target:OSCTarget):
         target.client.send_message(self.test_request_address, '1')

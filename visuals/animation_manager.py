@@ -5,6 +5,8 @@ from OpenGL.GL.shaders import compileProgram, compileShader
 import numpy
 import random
 import threading
+import os
+import time
 from pythonosc import dispatcher, osc_server
 
 # GLSL fragment shader source code
@@ -23,9 +25,12 @@ uniform float animationStartTimes[MAX_ANIMATIONS];
 
 // RING UNIFORMS
 uniform vec3 ringColors[MAX_ANIMATIONS];
+uniform vec2 ringPositions[MAX_ANIMATIONS];
 uniform float ringSizes[MAX_ANIMATIONS];
 uniform float ringOpacities[MAX_ANIMATIONS];
 uniform float ringThicknesses[MAX_ANIMATIONS];
+uniform float rotationSpeeds[MAX_ANIMATIONS];
+uniform float armCounts[MAX_ANIMATIONS];
 
 // LINE UNIFORMS
 uniform vec3 lineColors[MAX_ANIMATIONS];
@@ -40,7 +45,6 @@ void main()
     // Convert fragment coordinates to UV coordinates with (0, 0) in the center
     vec2 uv = (gl_FragCoord.xy / iResolution.xy) * 4.0 - 2.0;
     uv.y *= iResolution.y / iResolution.x; // Maintain aspect ratio
-    vec2 center = vec2(0.0, 0.0);
     float time = iTime;
     
     vec3 color = vec3(0.0);
@@ -49,12 +53,24 @@ void main()
         
         // Ring Animation
         if (animationTypes[i] == 0) { 
-            float dist = length(uv - center);
+            
+            vec2 p = uv - ringPositions[i];
+            float dist = length(p);
             float ringRadius = ringSizes[i];
             float ringThickness = ringThicknesses[i];
-            float alpha = step(ringRadius - ringThickness, dist) - step(ringRadius + ringThickness, dist);
-            color += ringColors[i] * ringOpacities[i] * alpha;
-        
+            float ringAlpha = step(ringRadius - ringThickness, dist) - step(ringRadius + ringThickness, dist);
+
+            // pinwheel ring
+            float angle = atan(p.y, p.x) + 0.2 * time * rotationSpeeds[i];
+            float arm_count = armCounts[i];
+
+            float pinwheelAlpha = 1;
+            if (arm_count > 1) {
+                pinwheelAlpha = step(0.5 + 0.5* sin(arm_count * angle + 0.2 * time * rotationSpeeds[i]), 0.5);
+            }
+
+            color += ringColors[i] * ringOpacities[i] * ringAlpha * pinwheelAlpha;
+ 
         // Line Animation
         } else if (animationTypes[i] == 1) { 
             float lineTime = time - animationStartTimes[i];
@@ -71,11 +87,15 @@ void main()
 
 # Pygame and OpenGL setup
 def init_pygame_opengl():
+
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (3072, 0)  # Change (1920, 0) based on your setup
+
     pygame.init()
     screen = pygame.display.set_mode((1920, 1080), DOUBLEBUF | OPENGL)
     glViewport(0, 0, 1920, 1080)
     glClearColor(0.0, 0.0, 0.0, 1.0)
     return screen
+
 
 def create_shader_program():
     vertex_shader_code = """
@@ -110,20 +130,28 @@ class Animation:
 class RingAnimation(Animation):
     def __init__(self, start_time, parameters):
         super().__init__(start_time, parameters)
-        self.size = 0.0
+        self.initialSize = parameters.get('size', 0)
+        self.size = self.initialSize
         self.opacity = 1.0
-        self.thickness= 0.01
+        self.initialThickness = parameters.get('thickness', 0.015)
+        self.thickness = self.initialThickness
         self.color = parameters['color']
+        self.rotationSpeed = parameters['rotationSpeed']
+        self.armCount = parameters['armCount']
+        self.position = parameters['position']
+        self.homePosition = self.position
+
+        self.growthSpeed = parameters.get('growthSpeed', 0.06)
+        self.lifetime = parameters.get('lifetime', 8)
 
     def update(self, current_time):
-        lifetime = 4 # time the ring is visible for
-        growth_speed = 0.1
 
         elapsed_time = current_time - self.start_time
-        self.size = elapsed_time * growth_speed  # Scale factor for ring growth
-        self.opacity = (1 - (elapsed_time / lifetime)) ** 2 # sort of like exponential decay but slower
+        self.size = self.initialSize + elapsed_time * self.growthSpeed  # Scale factor for ring growth
+        self.opacity = 1 #(1 - (elapsed_time / lifetime)) ** 0.5 # 
+        self.thickness = self.initialThickness * (1 - elapsed_time / self.lifetime) ** 0.5
 
-        if elapsed_time > lifetime:  # finish animation after lifetime
+        if elapsed_time > self.lifetime:  # finish animation after lifetime
             self.complete = True
 
     def render(self, shader_program, index):
@@ -132,7 +160,10 @@ class RingAnimation(Animation):
         glUniform1f(glGetUniformLocation(shader_program, f"ringSizes[{index}]"), self.size)
         glUniform1f(glGetUniformLocation(shader_program, f"ringOpacities[{index}]"), self.opacity)
         glUniform1f(glGetUniformLocation(shader_program, f"ringThicknesses[{index}]"), self.thickness)
+        glUniform1f(glGetUniformLocation(shader_program, f"rotationSpeeds[{index}]"), self.rotationSpeed)
+        glUniform1f(glGetUniformLocation(shader_program, f"armCounts[{index}]"), self.armCount)
         glUniform3f(glGetUniformLocation(shader_program, f"ringColors[{index}]"), *self.color)
+        glUniform2f(glGetUniformLocation(shader_program, f"ringPositions[{index}]"), *self.position)
         
 
 class LineAnimation(Animation):
@@ -160,6 +191,7 @@ class LineAnimation(Animation):
 class AnimationManager:
     def __init__(self):
         self.animations = []
+        self.current_section = 0
 
     def trigger_animation(self, animation_type, parameters=None):
         current_time = pygame.time.get_ticks() / 1000.0
@@ -184,16 +216,145 @@ class AnimationManager:
 
 # OSC handler function
 def trigger_ring_handler(unused_addr, *args):
-    colors = [(1,1,1), (1,0,0), (0,0,1), (0,1,0)]
-    animation_manager.trigger_animation("ring", {'color': colors[int(args[0])]})
+
+    # for phone triggers
+    if len(args) == 1:
+        args = [random.choice([1,2]), random.choice([1,2]), random.choice([-1,1]), random.choice([-1,1])]
+        """
+        if args[0] == 0:
+            args = [1,1,1,1]
+        if args[0] == 1:
+            args = [1,2,-1,1]
+        if args[0] == 2:
+            args = [2,1,1,-1]
+        if args[0] == 3:
+            args = [1,2,-1,-1]
+        """
+
+    # process measurement
+    alice_basis = args[0]
+    bob_basis = args[1]
+    alice_measurement = args[2]
+    bob_measurement = args[3]
+    white = (1,1,1)
+    red = (1,0.1,0.1)
+    blue = (0.2,0.2,1)
+    purple = (0.5, 0, 0.5)
+
+    # Measurement animation for first section
+    if animation_manager.current_section == 0:
+        outer_color = red if alice_measurement == 1 else blue
+        
+        inner_color = white
+        if bob_measurement == -1:
+            if outer_color == red:
+                inner_color = blue
+            else:
+                inner_color = red 
+
+        animation_manager.trigger_animation("ring", {'color': outer_color,
+                                                      'rotationSpeed' : 0.5,
+                                                      'armCount': 10 * (alice_basis - 1),
+                                                      'position': (0, 0.5)
+                                                    })
+        time.sleep(0.8)
+        animation_manager.trigger_animation("ring", {'color': inner_color,
+                                                      'rotationSpeed' : -0.5,
+                                                      'armCount' : 10 * (bob_basis - 1),
+                                                      'position' : (0, 0.5)})
+
+    if animation_manager.current_section == 2:
+        outer_color = red if alice_measurement == 1 else blue
+        
+        inner_color = white
+        if bob_measurement == -1:
+            if outer_color == red:
+                inner_color = blue
+            else:
+                inner_color = red 
+
+        xPositions = numpy.linspace(-0.9, 0.9, 4)
+        if random.choice([0, 1]) == 1:
+            xPositions = numpy.flip(xPositions)
+
+        initialSize = random.uniform(0.1, 0.28)
+        growthSpeed = random.uniform(-0.03, -0.05) 
+        animation_manager.trigger_animation("ring", {'color': outer_color,
+                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
+                                                      'armCount': random.choice([10, 30]) * (alice_basis - 1),
+                                                      'position': [xPositions[0], 0.45],
+                                                      'growthSpeed' : growthSpeed, 
+                                                      'size' : initialSize, 
+                                                    })
+        time.sleep(random.uniform(0.2, 1))
+        animation_manager.trigger_animation("ring", {'color': inner_color,
+                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
+                                                      'armCount': random.choice([10, 30]) * (alice_basis - 1),
+                                                      'position' : [xPositions[1], 0.6],
+                                                      'growthSpeed' : growthSpeed,
+                                                      'size' : initialSize,
+                                                      })
+
+        time.sleep(random.uniform(0.2, 1))
+        animation_manager.trigger_animation("ring", {'color': inner_color,
+                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
+                                                      'armCount': random.choice([10, 30]) * (bob_basis - 1),
+                                                      'position' : [xPositions[2], 0.6],
+                                                      'growthSpeed' : growthSpeed,
+                                                      'size' : initialSize,
+                                                      })
+        
+        time.sleep(random.uniform(0.2, 1))
+        animation_manager.trigger_animation("ring", {'color': inner_color,
+                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
+                                                      'armCount': random.choice([10, 30]) * (bob_basis - 1),
+                                                      'position' : [xPositions[3], 0.45],
+                                                      'growthSpeed' : growthSpeed,
+                                                      'size' : initialSize, 
+                                                      })
+
+    if animation_manager.current_section == 1:
+    
+        pol = (alice_measurement, bob_measurement)
+        
+        if pol == (1,1):
+            color = white
+        elif pol == (1,-1):
+            color = red
+        elif pol == (-1, 1):
+            color = blue
+        elif pol == (-1, -1):
+            color = purple
+
+        xPosShift = 1.5*(2*random.random() - 1)
+        yPosShift = 0.5*(2*random.random() - 1)
+        lifetime = random.uniform(0.8, 1.5)
+        growthSpeed = random.uniform(0.25, 0.15)
+
+        animation_manager.trigger_animation("ring", {'color': color,
+                                                      'rotationSpeed' : alice_basis * 5,
+                                                      'armCount': 20 * (bob_basis-1),
+                                                      'position': (xPosShift, 0.5 + yPosShift),
+                                                      'growthSpeed' : growthSpeed,
+                                                      'lifetime' : lifetime,
+                                                      'thickness' : 0.1
+                                                    })
+
+def trigger_setup_measurement_handler(unused_addr, *args):
+    if animation_manager.current_section == 2:
+        trigger_ring_handler(unused_addr, *args)
 
 def trigger_line_handler(unused_addr, *args):
     parameters = {
                 'color': (1.0,1.0,1.0),
                 'yPosition': 1
                 }
-    animation_manager.trigger_animation("line", parameters)
-    
+    # animation_manager.trigger_animation("line", parameters)
+
+def change_section_handler(unused_addr, *args):
+    animation_manager.current_section = int(args[0])
+    print(f'Section changed to {animation_manager.current_section}')
+
 def default_handler(addr, *args):
     print(f"Received OSC message: {addr} with arguments {args}")
 
@@ -201,9 +362,11 @@ def start_osc_server():
     disp = dispatcher.Dispatcher()
     disp.map("/bruQner/visuals/ring", trigger_ring_handler)
     disp.map("/bruQner/visuals/line", trigger_line_handler)
+    disp.map("/bruQner/visuals/setup_measurement", trigger_setup_measurement_handler)
+    disp.map("/bruQner/visuals/change_section", change_section_handler)
     disp.set_default_handler(default_handler)
     
-    server = osc_server.ThreadingOSCUDPServer(("192.168.0.10", 4701), disp)
+    server = osc_server.ThreadingOSCUDPServer(("192.168.0.2", 7403), disp)
     print("Serving on {}".format(server.server_address))
     server.serve_forever()
 
