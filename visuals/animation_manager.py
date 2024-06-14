@@ -286,7 +286,7 @@ def trigger_ring_handler(unused_addr, *args):
                                                       'growthSpeed' : growthSpeed, 
                                                       'size' : initialSize, 
                                                     })
-        time.sleep(random.uniform(0.2, 1))
+        time.sleep(random.uniform(0.8, 1))
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
                                                       'armCount': random.choice([10, 30]) * (alice_basis - 1),
@@ -295,7 +295,7 @@ def trigger_ring_handler(unused_addr, *args):
                                                       'size' : initialSize,
                                                       })
 
-        time.sleep(random.uniform(0.2, 1))
+        time.sleep(random.uniform(0.8, 1.2))
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
                                                       'armCount': random.choice([10, 30]) * (bob_basis - 1),
@@ -304,7 +304,7 @@ def trigger_ring_handler(unused_addr, *args):
                                                       'size' : initialSize,
                                                       })
         
-        time.sleep(random.uniform(0.2, 1))
+        time.sleep(random.uniform(0.8, 1.2))
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
                                                       'armCount': random.choice([10, 30]) * (bob_basis - 1),
