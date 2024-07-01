@@ -88,7 +88,7 @@ void main()
 # Pygame and OpenGL setup
 def init_pygame_opengl():
 
-    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (3072, 0)  # Change (1920, 0) based on your setup
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (3072, 0)  # Change (1920, 0) based on screen resolution
 
     pygame.init()
     screen = pygame.display.set_mode((1920, 1080), DOUBLEBUF | OPENGL)
@@ -220,22 +220,13 @@ def trigger_ring_handler(unused_addr, *args):
     # for phone triggers
     if len(args) == 1:
         args = [random.choice([1,2]), random.choice([1,2]), random.choice([-1,1]), random.choice([-1,1])]
-        """
-        if args[0] == 0:
-            args = [1,1,1,1]
-        if args[0] == 1:
-            args = [1,2,-1,1]
-        if args[0] == 2:
-            args = [2,1,1,-1]
-        if args[0] == 3:
-            args = [1,2,-1,-1]
-        """
 
     # process measurement
     alice_basis = args[0]
     bob_basis = args[1]
     alice_measurement = args[2]
     bob_measurement = args[3]
+
     white = (1,1,1)
     red = (1,0.1,0.1)
     blue = (0.2,0.2,1)
@@ -262,6 +253,33 @@ def trigger_ring_handler(unused_addr, *args):
                                                       'rotationSpeed' : -0.5,
                                                       'armCount' : 10 * (bob_basis - 1),
                                                       'position' : (0, 0.5)})
+
+    if animation_manager.current_section == 1:
+    
+        pol = (alice_measurement, bob_measurement)
+        
+        if pol == (1,1):
+            color = white
+        elif pol == (1,-1):
+            color = red
+        elif pol == (-1, 1):
+            color = blue
+        elif pol == (-1, -1):
+            color = purple
+
+        xPosShift = 1.5*(2*random.random() - 1)
+        yPosShift = 0.5*(2*random.random() - 1)
+        lifetime = random.uniform(0.8, 1.5)
+        growthSpeed = random.uniform(0.25, 0.15)
+
+        animation_manager.trigger_animation("ring", {'color': color,
+                                                      'rotationSpeed' : alice_basis * 5,
+                                                      'armCount': 20 * (bob_basis-1),
+                                                      'position': (xPosShift, 0.5 + yPosShift),
+                                                      'growthSpeed' : growthSpeed,
+                                                      'lifetime' : lifetime,
+                                                      'thickness' : 0.1
+                                                    })
 
     if animation_manager.current_section == 2:
         outer_color = red if alice_measurement == 1 else blue
@@ -313,32 +331,6 @@ def trigger_ring_handler(unused_addr, *args):
                                                       'size' : initialSize, 
                                                       })
 
-    if animation_manager.current_section == 1:
-    
-        pol = (alice_measurement, bob_measurement)
-        
-        if pol == (1,1):
-            color = white
-        elif pol == (1,-1):
-            color = red
-        elif pol == (-1, 1):
-            color = blue
-        elif pol == (-1, -1):
-            color = purple
-
-        xPosShift = 1.5*(2*random.random() - 1)
-        yPosShift = 0.5*(2*random.random() - 1)
-        lifetime = random.uniform(0.8, 1.5)
-        growthSpeed = random.uniform(0.25, 0.15)
-
-        animation_manager.trigger_animation("ring", {'color': color,
-                                                      'rotationSpeed' : alice_basis * 5,
-                                                      'armCount': 20 * (bob_basis-1),
-                                                      'position': (xPosShift, 0.5 + yPosShift),
-                                                      'growthSpeed' : growthSpeed,
-                                                      'lifetime' : lifetime,
-                                                      'thickness' : 0.1
-                                                    })
 
 def trigger_setup_measurement_handler(unused_addr, *args):
     if animation_manager.current_section == 2:
