@@ -7,7 +7,16 @@ import random
 import threading
 import os
 import time
-from pythonosc import dispatcher, osc_server
+import importlib
+
+#from config import PERFORMANCE_MODULE
+
+# Force the use of the NVIDIA GPU
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["QT_OPENGL"] = "angle"  # Use ANGLE OpenGL for PyQt applications
+
+USE_OSC = False
+RESOLUTION = (3072/2, 1920/2)
 
 # GLSL fragment shader source code
 fragment_shader_code = """
@@ -85,17 +94,21 @@ void main()
 }
 """
 
+# load the code for the current performance
+def load_performance_module(module_name):
+    module = importlib.import_module(f'performance_handlers.{module_name}')
+    return module.run_performance
+
 # Pygame and OpenGL setup
 def init_pygame_opengl():
 
-    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (3072, 0)  # Change (1920, 0) based on screen resolution
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (0, 0)  # Change (1920, 0) or (3072, 0) based on screen resolution
 
     pygame.init()
-    screen = pygame.display.set_mode((1920, 1080), DOUBLEBUF | OPENGL)
+    screen = pygame.display.set_mode(RESOLUTION, DOUBLEBUF | OPENGL)
     glViewport(0, 0, 1920, 1080)
     glClearColor(0.0, 0.0, 0.0, 1.0)
     return screen
-
 
 def create_shader_program():
     vertex_shader_code = """
@@ -165,7 +178,6 @@ class RingAnimation(Animation):
         glUniform3f(glGetUniformLocation(shader_program, f"ringColors[{index}]"), *self.color)
         glUniform2f(glGetUniformLocation(shader_program, f"ringPositions[{index}]"), *self.position)
         
-
 class LineAnimation(Animation):
     def __init__(self, start_time, parameters):
         super().__init__(start_time, parameters)
@@ -195,6 +207,9 @@ class AnimationManager:
 
     def trigger_animation(self, animation_type, parameters=None):
         current_time = pygame.time.get_ticks() / 1000.0
+
+        if 'delay' in parameters:
+            current_time += parameters['delay']
         if animation_type == "ring":
             new_animation = RingAnimation(current_time, parameters)
         elif animation_type == "line":
@@ -248,11 +263,12 @@ def trigger_ring_handler(unused_addr, *args):
                                                       'armCount': 10 * (alice_basis - 1),
                                                       'position': (0, 0.5)
                                                     })
-        time.sleep(0.8)
+        
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : -0.5,
                                                       'armCount' : 10 * (bob_basis - 1),
-                                                      'position' : (0, 0.5)})
+                                                      'position' : (0, 0.5),
+                                                      'delay': 0.8})
 
     if animation_manager.current_section == 1:
     
@@ -331,7 +347,6 @@ def trigger_ring_handler(unused_addr, *args):
                                                       'size' : initialSize, 
                                                       })
 
-
 def trigger_setup_measurement_handler(unused_addr, *args):
     if animation_manager.current_section == 2:
         trigger_ring_handler(unused_addr, *args)
@@ -389,9 +404,10 @@ def main():
     animation_manager = AnimationManager()
 
     # Start OSC server in a separate thread
-    osc_thread = threading.Thread(target=start_osc_server)
-    osc_thread.daemon = True
-    osc_thread.start()
+    if USE_OSC: 
+        osc_thread = threading.Thread(target=start_osc_server)
+        osc_thread.daemon = True
+        osc_thread.start()
 
     running = True
     while running:
@@ -400,16 +416,14 @@ def main():
                 running = False
             elif event.type == KEYDOWN:
                 if event.key == K_r:
-                    color = (random.random(), random.random(), random.random())
-                    animation_manager.trigger_animation("ring", color)
+                    trigger_ring_handler('', 0)
                 elif event.key == K_l:
-                    color = (random.random(), random.random(), random.random())
-                    animation_manager.trigger_animation("line", color)
+                    pass
 
         glClear(GL_COLOR_BUFFER_BIT)
         current_time = pygame.time.get_ticks() / 1000.0
 
-        glUniform2f(iResolution, 1920, 1080)
+        glUniform2f(iResolution, RESOLUTION[0], RESOLUTION[1])
         glUniform1f(iTime, current_time)
         glUniform2f(iMouse, *pygame.mouse.get_pos())
 
