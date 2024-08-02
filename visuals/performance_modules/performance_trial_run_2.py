@@ -1,4 +1,8 @@
-def run_performance():
+import random
+import time
+import numpy as np
+
+def run_performance(animation_manager, *args):
 
     # for phone triggers
     if len(args) == 1:
@@ -75,9 +79,9 @@ def run_performance():
             else:
                 inner_color = red 
 
-        xPositions = numpy.linspace(-0.9, 0.9, 4)
+        xPositions = np.linspace(-0.9, 0.9, 4)
         if random.choice([0, 1]) == 1:
-            xPositions = numpy.flip(xPositions)
+            xPositions = np.flip(xPositions)
 
         initialSize = random.uniform(0.1, 0.28)
         growthSpeed = random.uniform(-0.03, -0.05) 
@@ -88,29 +92,30 @@ def run_performance():
                                                       'growthSpeed' : growthSpeed, 
                                                       'size' : initialSize, 
                                                     })
-        time.sleep(random.uniform(0.8, 1))
+
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
                                                       'armCount': random.choice([10, 30]) * (alice_basis - 1),
                                                       'position' : [xPositions[1], 0.6],
                                                       'growthSpeed' : growthSpeed,
                                                       'size' : initialSize,
+                                                      'delay': random.uniform(0.8, 1),
                                                       })
 
-        time.sleep(random.uniform(0.8, 1.2))
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
                                                       'armCount': random.choice([10, 30]) * (bob_basis - 1),
                                                       'position' : [xPositions[2], 0.6],
                                                       'growthSpeed' : growthSpeed,
                                                       'size' : initialSize,
+                                                      'delay': random.uniform(0.8, 1.2),
                                                       })
         
-        time.sleep(random.uniform(0.8, 1.2))
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
                                                       'armCount': random.choice([10, 30]) * (bob_basis - 1),
                                                       'position' : [xPositions[3], 0.45],
                                                       'growthSpeed' : growthSpeed,
                                                       'size' : initialSize, 
+                                                      'delay': random.uniform(0.8, 1.2),
                                                       })

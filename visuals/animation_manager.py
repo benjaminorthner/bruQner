@@ -3,100 +3,21 @@ from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
 import numpy
-import random
 import threading
 import os
-import time
 import importlib
+from pythonosc import dispatcher, osc_server
 
-#from config import PERFORMANCE_MODULE
+from config import PERFORMANCE_MODULE, USE_OSC, RESOLUTION, MY_IP, MY_PORT
 
 # Force the use of the NVIDIA GPU
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["QT_OPENGL"] = "angle"  # Use ANGLE OpenGL for PyQt applications
 
-USE_OSC = False
-RESOLUTION = (3072/2, 1920/2)
-
-# GLSL fragment shader source code
-fragment_shader_code = """
-#version 330 core
-
-#define MAX_ANIMATIONS 30
-
-uniform vec2 iResolution;
-uniform float iTime;
-
-// SHARED UNIFORMS
-uniform int animationCount; // Number of active animations
-uniform int animationTypes[MAX_ANIMATIONS]; // 0 for ring, 1 for line
-uniform float animationStartTimes[MAX_ANIMATIONS];
-
-// RING UNIFORMS
-uniform vec3 ringColors[MAX_ANIMATIONS];
-uniform vec2 ringPositions[MAX_ANIMATIONS];
-uniform float ringSizes[MAX_ANIMATIONS];
-uniform float ringOpacities[MAX_ANIMATIONS];
-uniform float ringThicknesses[MAX_ANIMATIONS];
-uniform float rotationSpeeds[MAX_ANIMATIONS];
-uniform float armCounts[MAX_ANIMATIONS];
-
-// LINE UNIFORMS
-uniform vec3 lineColors[MAX_ANIMATIONS];
-uniform float lineThicknesses[MAX_ANIMATIONS];
-uniform float lineYPositions[MAX_ANIMATIONS];
-uniform float lineOpacities[MAX_ANIMATIONS];
-
-out vec4 fragColor;
-
-void main()
-{
-    // Convert fragment coordinates to UV coordinates with (0, 0) in the center
-    vec2 uv = (gl_FragCoord.xy / iResolution.xy) * 4.0 - 2.0;
-    uv.y *= iResolution.y / iResolution.x; // Maintain aspect ratio
-    float time = iTime;
-    
-    vec3 color = vec3(0.0);
-
-    for (int i = 0; i < animationCount; i++) {
-        
-        // Ring Animation
-        if (animationTypes[i] == 0) { 
-            
-            vec2 p = uv - ringPositions[i];
-            float dist = length(p);
-            float ringRadius = ringSizes[i];
-            float ringThickness = ringThicknesses[i];
-            float ringAlpha = step(ringRadius - ringThickness, dist) - step(ringRadius + ringThickness, dist);
-
-            // pinwheel ring
-            float angle = atan(p.y, p.x) + 0.2 * time * rotationSpeeds[i];
-            float arm_count = armCounts[i];
-
-            float pinwheelAlpha = 1;
-            if (arm_count > 1) {
-                pinwheelAlpha = step(0.5 + 0.5* sin(arm_count * angle + 0.2 * time * rotationSpeeds[i]), 0.5);
-            }
-
-            color += ringColors[i] * ringOpacities[i] * ringAlpha * pinwheelAlpha;
- 
-        // Line Animation
-        } else if (animationTypes[i] == 1) { 
-            float lineTime = time - animationStartTimes[i];
-            float y = uv.y - lineYPositions[i];
-            float thickness = lineThicknesses[i];
-            float alpha = step(- thickness / 2.0, y) - step(thickness / 2.0, y); 
-            color += lineColors[i] * lineOpacities[i] * alpha;
-        }
-    }
-    
-    fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
-}
-"""
 
 # load the code for the current performance
 def load_performance_module(module_name):
-    module = importlib.import_module(f'performance_handlers.{module_name}')
+    module = importlib.import_module(f'performance_modules.{module_name}')
     return module.run_performance
 
 # Pygame and OpenGL setup
@@ -111,6 +32,11 @@ def init_pygame_opengl():
     return screen
 
 def create_shader_program():
+    # import GLSL fragment shader source code
+    with open(os.path.join(os.path.dirname(__file__), 'fragment_shader.glsl'), 'r') as file:
+        fragment_shader_code = file.read()
+
+    # define vertex shader code
     vertex_shader_code = """
     #version 330 core
     layout(location = 0) in vec3 position;
@@ -229,135 +155,7 @@ class AnimationManager:
             animation.render(shader_program, i)
 
 
-# OSC handler function
-def trigger_ring_handler(unused_addr, *args):
-
-    # for phone triggers
-    if len(args) == 1:
-        args = [random.choice([1,2]), random.choice([1,2]), random.choice([-1,1]), random.choice([-1,1])]
-
-    # process measurement
-    alice_basis = args[0]
-    bob_basis = args[1]
-    alice_measurement = args[2]
-    bob_measurement = args[3]
-
-    white = (1,1,1)
-    red = (1,0.1,0.1)
-    blue = (0.2,0.2,1)
-    purple = (0.5, 0, 0.5)
-
-    # Measurement animation for first section
-    if animation_manager.current_section == 0:
-        outer_color = red if alice_measurement == 1 else blue
-        
-        inner_color = white
-        if bob_measurement == -1:
-            if outer_color == red:
-                inner_color = blue
-            else:
-                inner_color = red 
-
-        animation_manager.trigger_animation("ring", {'color': outer_color,
-                                                      'rotationSpeed' : 0.5,
-                                                      'armCount': 10 * (alice_basis - 1),
-                                                      'position': (0, 0.5)
-                                                    })
-        
-        animation_manager.trigger_animation("ring", {'color': inner_color,
-                                                      'rotationSpeed' : -0.5,
-                                                      'armCount' : 10 * (bob_basis - 1),
-                                                      'position' : (0, 0.5),
-                                                      'delay': 0.8})
-
-    if animation_manager.current_section == 1:
-    
-        pol = (alice_measurement, bob_measurement)
-        
-        if pol == (1,1):
-            color = white
-        elif pol == (1,-1):
-            color = red
-        elif pol == (-1, 1):
-            color = blue
-        elif pol == (-1, -1):
-            color = purple
-
-        xPosShift = 1.5*(2*random.random() - 1)
-        yPosShift = 0.5*(2*random.random() - 1)
-        lifetime = random.uniform(0.8, 1.5)
-        growthSpeed = random.uniform(0.25, 0.15)
-
-        animation_manager.trigger_animation("ring", {'color': color,
-                                                      'rotationSpeed' : alice_basis * 5,
-                                                      'armCount': 20 * (bob_basis-1),
-                                                      'position': (xPosShift, 0.5 + yPosShift),
-                                                      'growthSpeed' : growthSpeed,
-                                                      'lifetime' : lifetime,
-                                                      'thickness' : 0.1
-                                                    })
-
-    if animation_manager.current_section == 2:
-        outer_color = red if alice_measurement == 1 else blue
-        
-        inner_color = white
-        if bob_measurement == -1:
-            if outer_color == red:
-                inner_color = blue
-            else:
-                inner_color = red 
-
-        xPositions = numpy.linspace(-0.9, 0.9, 4)
-        if random.choice([0, 1]) == 1:
-            xPositions = numpy.flip(xPositions)
-
-        initialSize = random.uniform(0.1, 0.28)
-        growthSpeed = random.uniform(-0.03, -0.05) 
-        animation_manager.trigger_animation("ring", {'color': outer_color,
-                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
-                                                      'armCount': random.choice([10, 30]) * (alice_basis - 1),
-                                                      'position': [xPositions[0], 0.45],
-                                                      'growthSpeed' : growthSpeed, 
-                                                      'size' : initialSize, 
-                                                    })
-        time.sleep(random.uniform(0.8, 1))
-        animation_manager.trigger_animation("ring", {'color': inner_color,
-                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
-                                                      'armCount': random.choice([10, 30]) * (alice_basis - 1),
-                                                      'position' : [xPositions[1], 0.6],
-                                                      'growthSpeed' : growthSpeed,
-                                                      'size' : initialSize,
-                                                      })
-
-        time.sleep(random.uniform(0.8, 1.2))
-        animation_manager.trigger_animation("ring", {'color': inner_color,
-                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
-                                                      'armCount': random.choice([10, 30]) * (bob_basis - 1),
-                                                      'position' : [xPositions[2], 0.6],
-                                                      'growthSpeed' : growthSpeed,
-                                                      'size' : initialSize,
-                                                      })
-        
-        time.sleep(random.uniform(0.8, 1.2))
-        animation_manager.trigger_animation("ring", {'color': inner_color,
-                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
-                                                      'armCount': random.choice([10, 30]) * (bob_basis - 1),
-                                                      'position' : [xPositions[3], 0.45],
-                                                      'growthSpeed' : growthSpeed,
-                                                      'size' : initialSize, 
-                                                      })
-
-def trigger_setup_measurement_handler(unused_addr, *args):
-    if animation_manager.current_section == 2:
-        trigger_ring_handler(unused_addr, *args)
-
-def trigger_line_handler(unused_addr, *args):
-    parameters = {
-                'color': (1.0,1.0,1.0),
-                'yPosition': 1
-                }
-    # animation_manager.trigger_animation("line", parameters)
-
+# OSC handler functions
 def change_section_handler(unused_addr, *args):
     animation_manager.current_section = int(args[0])
     print(f'Section changed to {animation_manager.current_section}')
@@ -365,15 +163,13 @@ def change_section_handler(unused_addr, *args):
 def default_handler(addr, *args):
     print(f"Received OSC message: {addr} with arguments {args}")
 
-def start_osc_server():
+def start_osc_server(run_performance, animation_manager):
     disp = dispatcher.Dispatcher()
-    disp.map("/bruQner/visuals/ring", trigger_ring_handler)
-    disp.map("/bruQner/visuals/line", trigger_line_handler)
-    disp.map("/bruQner/visuals/setup_measurement", trigger_setup_measurement_handler)
+    disp.map("/bruQner/visuals/ring", run_performance, animation_manager)
     disp.map("/bruQner/visuals/change_section", change_section_handler)
     disp.set_default_handler(default_handler)
     
-    server = osc_server.ThreadingOSCUDPServer(("192.168.0.2", 7403), disp)
+    server = osc_server.ThreadingOSCUDPServer((MY_IP, MY_PORT), disp)
     print("Serving on {}".format(server.server_address))
     server.serve_forever()
 
@@ -401,24 +197,43 @@ def main():
     iTime = glGetUniformLocation(shader_program, "iTime")
     iMouse = glGetUniformLocation(shader_program, "iMouse")
 
+    # init the animation manager
     animation_manager = AnimationManager()
 
+    # load perforamnce setup in config file
+    run_performance = load_performance_module(PERFORMANCE_MODULE)
+    
     # Start OSC server in a separate thread
     if USE_OSC: 
-        osc_thread = threading.Thread(target=start_osc_server)
+        osc_thread = threading.Thread(target=start_osc_server, args=(run_performance, animation_manager))
         osc_thread.daemon = True
         osc_thread.start()
 
+    clock = pygame.time.Clock()  # Create a Clock object to manage the frame rate
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == QUIT:
                 running = False
             elif event.type == KEYDOWN:
+
+                # manually trigger random measurement with 'r' key
                 if event.key == K_r:
-                    trigger_ring_handler('', 0)
-                elif event.key == K_l:
-                    pass
+                    run_performance(animation_manager, 0)
+
+                # manually change section with number keys
+                elif event.key in [eval(f'K_{i}') for i in range(10)]:
+                    section = event.key - 48
+                    change_section_handler('', section)
+
+                # quit if escape key is pressed 
+                elif event.key == K_ESCAPE:
+                    running = False
+
+                # catch ctrl + c and exit
+                mods = pygame.key.get_mods()
+                if event.key == K_c and mods & KMOD_CTRL:
+                    running = False
 
         glClear(GL_COLOR_BUFFER_BIT)
         current_time = pygame.time.get_ticks() / 1000.0
@@ -432,7 +247,7 @@ def main():
 
         glDrawArrays(GL_QUADS, 0, 4)
         pygame.display.flip()
-        pygame.time.wait(10)
+        clock.tick(60)
 
     pygame.quit()
 
