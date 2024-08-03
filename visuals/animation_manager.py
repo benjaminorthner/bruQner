@@ -72,28 +72,46 @@ class Animation:
 class RingAnimation(Animation):
     def __init__(self, start_time, parameters):
         super().__init__(start_time, parameters)
-        self.initialSize = parameters.get('size', 0)
-        self.size = self.initialSize
-        self.opacity = 1.0
-        self.initialThickness = parameters.get('thickness', 0.015)
-        self.thickness = self.initialThickness
-        self.color = parameters['color']
-        self.rotationSpeed = parameters['rotationSpeed']
-        self.armCount = parameters['armCount']
-        self.position = parameters['position']
-        self.homePosition = self.position
 
-        self.growthSpeed = parameters.get('growthSpeed', 0.06)
+        self.parameters = parameters
+
+        self.size = parameters.get('size', 1)
+        self.opacity = parameters.get('opacity', 1.0)
+        self.thickness = parameters.get('thickness', 0.015)
+        self.color = parameters.get('color', (1,1,1))
+        # TODO use absolute angle instead of built in rotation. Update with dynamic parameter
+        self.rotationSpeed = parameters.get('rotationSpeed', 0)
+        self.armCount = parameters.get('armCount', 0)
+        self.position = parameters.get('position', (0,0))
         self.lifetime = parameters.get('lifetime', 8)
+        self.delay = parameters.get('delay', 0)
+
+        self.dynamic_parameters = parameters.get('dynamic', {})
 
     def update(self, current_time):
 
-        elapsed_time = current_time - self.start_time
-        self.size = self.initialSize + elapsed_time * self.growthSpeed  # Scale factor for ring growth
-        self.opacity = 1 #(1 - (elapsed_time / lifetime)) ** 0.5 # 
-        self.thickness = self.initialThickness * (1 - elapsed_time / self.lifetime) ** 0.5
+        elapsed_time = current_time - self.start_time - self.delay
 
-        if elapsed_time > self.lifetime:  # finish animation after lifetime
+        # If delay not elapsed yet then elapsed time will be negative
+        # Set opacity to 0 during this time. Afterwards get opacity 
+        # set by user from parameters
+        if elapsed_time < 0:
+            self.opacity = 0
+            return
+        else:
+            self.opacity = self.parameters.get('opacity', 1) 
+
+        # Update dynamic parameters. If they are callable (i.e. lambda functions)
+        # then put call them with elapsed_time parameter, else just set their value
+        # Note: previously set non-dynamic parameters will be overwritten
+        for key, value in self.dynamic_parameters.items():
+            if callable(value):
+                setattr(self, key, value(elapsed_time))
+            else:
+                setattr(self, key, value)
+        
+        # finish animation after lifetime. Triggers deletion
+        if elapsed_time > self.lifetime:  
             self.complete = True
 
     def render(self, shader_program, index):
@@ -137,8 +155,6 @@ class AnimationManager:
     def trigger_animation(self, animation_type, parameters=None):
         current_time = pygame.time.get_ticks() / 1000.0
 
-        if 'delay' in parameters:
-            current_time += parameters['delay']
         if animation_type == "ring":
             new_animation = RingAnimation(current_time, parameters)
         elif animation_type == "line":

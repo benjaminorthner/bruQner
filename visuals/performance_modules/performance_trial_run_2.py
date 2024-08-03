@@ -21,6 +21,11 @@ def run_performance(osc_address, *args):
     blue = (0.2,0.2,1)
     purple = (0.5, 0, 0.5)
 
+    initialSize = 0
+    initialThickness = 0.015
+    growthSpeed = 0.06
+    lifetime = 8
+
     # Measurement animation for first section
     if animation_manager.current_section == 0:
         outer_color = red if alice_measurement == 1 else blue
@@ -35,14 +40,28 @@ def run_performance(osc_address, *args):
         animation_manager.trigger_animation("ring", {'color': outer_color,
                                                       'rotationSpeed' : 0.5,
                                                       'armCount': 10 * (alice_basis - 1),
-                                                      'position': (0, 0.5)
-                                                    })
-        
+                                                      'position': (0, 0.5),
+                                                      'lifetime': lifetime,
+                                                      'dynamic': {
+                                                        'size': lambda t: initialSize + t * growthSpeed,  
+                                                        'thickness': lambda t: initialThickness * (1 - t / lifetime) ** 0.5,  
+                                                        },
+                                                    }
+                                            )
+        delay = 0.8 
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : -0.5,
                                                       'armCount' : 10 * (bob_basis - 1),
                                                       'position' : (0, 0.5),
-                                                      'delay': 0.8})
+                                                      'lifetime': lifetime - delay,
+                                                      'delay': delay,
+                                                      'dynamic': {
+                                                        'size': lambda t: initialSize + t * growthSpeed,  
+                                                        'thickness': lambda t: initialThickness * (1 - t / lifetime) ** 0.5,  
+                                                        'opacity' : lambda t: t * 0.2,
+                                                        }
+                                                    }
+                                            )
 
     if animation_manager.current_section == 1:
     
@@ -66,9 +85,12 @@ def run_performance(osc_address, *args):
                                                       'rotationSpeed' : alice_basis * 5,
                                                       'armCount': 20 * (bob_basis-1),
                                                       'position': (xPosShift, 0.5 + yPosShift),
-                                                      'growthSpeed' : growthSpeed,
                                                       'lifetime' : lifetime,
-                                                      'thickness' : 0.1
+                                                      'thickness' : 0.1,
+                                                      'dynamic': {
+                                                        'size': lambda t: initialSize + t * growthSpeed,  
+                                                        'thickness': lambda t: initialThickness * (1 - t / lifetime) ** 0.5,  
+                                                        }
                                                     })
 
     if animation_manager.current_section == 2:
@@ -91,33 +113,42 @@ def run_performance(osc_address, *args):
                                                       'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
                                                       'armCount': random.choice([10, 30]) * (alice_basis - 1),
                                                       'position': [xPositions[0], 0.45],
-                                                      'growthSpeed' : growthSpeed, 
-                                                      'size' : initialSize, 
+                                                      'dynamic': {
+                                                        'size': lambda t: initialSize + t * growthSpeed,  
+                                                        'thickness': lambda t: initialThickness * (1 - t / lifetime) ** 0.5,  
+                                                        }
                                                     })
 
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
                                                       'armCount': random.choice([10, 30]) * (alice_basis - 1),
                                                       'position' : [xPositions[1], 0.6],
-                                                      'growthSpeed' : growthSpeed,
-                                                      'size' : initialSize,
+                                                      'lifetime' : lifetime,
                                                       'delay': random.uniform(0.8, 1),
+                                                      'dynamic': {
+                                                        'size': lambda t: initialSize + t * growthSpeed,  
+                                                        'thickness': lambda t: initialThickness * (1 - t / lifetime) ** 0.5,  
+                                                        }
                                                       })
 
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
                                                       'armCount': random.choice([10, 30]) * (bob_basis - 1),
                                                       'position' : [xPositions[2], 0.6],
-                                                      'growthSpeed' : growthSpeed,
-                                                      'size' : initialSize,
                                                       'delay': random.uniform(0.8, 1.2),
+                                                      'dynamic': {
+                                                        'size': lambda t: initialSize + t * growthSpeed,  
+                                                        'thickness': lambda t: initialThickness * (1 - t / lifetime) ** 0.5,  
+                                                        }
                                                       })
         
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
                                                       'armCount': random.choice([10, 30]) * (bob_basis - 1),
                                                       'position' : [xPositions[3], 0.45],
-                                                      'growthSpeed' : growthSpeed,
-                                                      'size' : initialSize, 
                                                       'delay': random.uniform(0.8, 1.2),
+                                                      'dynamic': {
+                                                        'size': lambda t: initialSize + t * growthSpeed,  
+                                                        'thickness': lambda t: initialThickness * (1 - t / lifetime) ** 0.5,  
+                                                        }
                                                       })

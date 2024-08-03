@@ -36,9 +36,12 @@ def run_performance(osc_address, *args):
         animation_manager.trigger_animation("ring", {'color': outer_color,
                                                       'rotationSpeed' : 0.5,
                                                       'armCount': 0,
-                                                      'size': 1,
                                                       'growthSpeed': 0,
-                                                      'position': (0.25, 0)
+                                                      'position': (0.25, 0),
+                                                      'dynamic': {
+                                                        'size': lambda t: 0.1 + t * 0.2,  
+                                                        'opacity': lambda t: 1.0 - t * 0.1  
+                                                    }
                                                     })
         
         animation_manager.trigger_animation("ring", {'color': inner_color,
