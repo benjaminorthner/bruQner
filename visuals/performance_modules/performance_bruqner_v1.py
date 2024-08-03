@@ -1,5 +1,29 @@
 import random
 import numpy as np
+import math
+
+# FUNCTIONS FOR WIGGLE
+# based on https://www.shadertoy.com/view/7ss3RX
+def R(v):
+    # Generate a random number based on input vector
+    random.seed(int(v[0] * 12345 + v[1] * 67890))
+    return random.random()
+
+def smoothstep(edge0, edge1, x):
+    # Scale, bias and saturate x to 0..1 range
+    x = max(0.0, min(1.0, (x - edge0) / (edge1 - edge0)))
+    # Evaluate polynomial
+    return x * x * (3 - 2 * x)
+
+def smoothwiggle(t, frequency, seed):
+    t *= frequency
+    a = R([math.floor(t), seed]) * 2.0 - 1.0
+    b = R([math.ceil(t), seed]) * 2.0 - 1.0
+    
+    t -= math.floor(t)
+    
+    # Mix function integrated directly
+    return a * (1 - smoothstep(0.0, 1.0, t)) + b * smoothstep(0.0, 1.0, t)
 
 def run_performance(osc_address, *args):
 
@@ -23,6 +47,8 @@ def run_performance(osc_address, *args):
 
     # Measurement animation for first section
     if animation_manager.current_section == 0:
+
+        # measurement -> music logic
         outer_color = red if alice_measurement == 1 else blue
         
         inner_color = white
@@ -32,25 +58,49 @@ def run_performance(osc_address, *args):
             else:
                 inner_color = red 
 
-        # TODO pass through lambda function that takes elapsed time as a parameter, use for externally setting dynamic control of parameters
+        # parameters
+        lifetime = 5.5
+        fadeout_length = 0.5
+        fadein_length = 0.3
+
+        opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
+
+        initial_size = 0.7
+        growthSpeed = 0.02
+        thickness = 0.04
+
+        initial_x = 0.25
+        x_speed = 0.1
+
+        wiggle_amplitude = 0.01
+        wiggle_frequency = 10
+
+        position_x = lambda seed, t: initial_x + t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
+        position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
+
         animation_manager.trigger_animation("ring", {'color': outer_color,
-                                                      'rotationSpeed' : 0.5,
+                                                      'rotationSpeed': 0.5,
                                                       'armCount': 0,
-                                                      'growthSpeed': 0,
-                                                      'position': (0.25, 0),
+                                                      'thickness': thickness,
+                                                      'lifetime': lifetime,
                                                       'dynamic': {
-                                                        'size': lambda t: 0.1 + t * 0.2,  
-                                                        'opacity': lambda t: 1.0 - t * 0.1  
+                                                        'size': lambda t: initial_size + growthSpeed * t,  
+                                                        'opacity': opacity,
+                                                        'position': lambda t: (position_x(seed=0, t=t), position_y(seed=1, t=t)),
                                                     }
                                                     })
         
         animation_manager.trigger_animation("ring", {'color': inner_color,
-                                                      'rotationSpeed' : -0.5,
-                                                      'armCount' : 0,
-                                                      'size': 1,
-                                                      'growthSpeed': 0,
-                                                      'position' : (-0.25, 0),
-                                                      'delay': 0})
+                                                      'rotationSpeed': -0.5,
+                                                      'armCount': 0,
+                                                      'thickness': thickness,
+                                                      'lifetime': lifetime,
+                                                      'dynamic': {
+                                                        'size': lambda t: initial_size + growthSpeed * t,  
+                                                        'opacity': opacity,
+                                                        'position': lambda t: (-position_x(seed=2, t=t), position_y(seed=3, t=t)),
+                                                    }
+                                                    })
 
     if animation_manager.current_section == 1:
     

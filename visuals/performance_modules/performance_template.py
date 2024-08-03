@@ -29,6 +29,7 @@ def run_performance(osc_address, *args):
         growthSpeed = 0.06
         lifetime = 8
         animation_manager.trigger_animation("ring", {'color': white,
+                                                     'lifetime': lifetime,
                                                      'dynamic': {
                                                         'size': lambda t: initialSize + t * growthSpeed,  
                                                         'thickness': lambda t: initialThickness * (1 - t / lifetime) ** 0.5,  
