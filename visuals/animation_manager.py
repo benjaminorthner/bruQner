@@ -8,7 +8,7 @@ import os
 import importlib
 from pythonosc import dispatcher, osc_server
 
-from config import PERFORMANCE_MODULE, USE_OSC, RESOLUTION, MY_IP, MY_PORT
+from visuals_config import PERFORMANCE_MODULE, USE_OSC, RESOLUTION, MY_IP, MY_PORT
 
 # Force the use of the NVIDIA GPU
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -26,8 +26,11 @@ def init_pygame_opengl():
     os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (0, 0)  # Change (1920, 0) or (3072, 0) based on screen resolution
 
     pygame.init()
+
+    # create viewport
     screen = pygame.display.set_mode(RESOLUTION, DOUBLEBUF | OPENGL)
-    glViewport(0, 0, 1920, 1080)
+    #glViewport(0, 0, 1920, 1080)
+    glViewport(0, 0, *RESOLUTION)
     glClearColor(0.0, 0.0, 0.0, 1.0)
     return screen
 
@@ -219,7 +222,7 @@ def main():
 
                 # manually trigger random measurement with 'r' key
                 if event.key == K_r:
-                    run_performance(animation_manager, 0)
+                    run_performance("/bruQner/visuals/ring", [animation_manager], 0)
 
                 # manually change section with number keys
                 elif event.key in [eval(f'K_{i}') for i in range(10)]:

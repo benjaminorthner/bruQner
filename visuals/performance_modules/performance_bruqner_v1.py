@@ -32,17 +32,22 @@ def run_performance(osc_address, *args):
             else:
                 inner_color = red 
 
+        # TODO pass through lambda function that takes elapsed time as a parameter, use for externally setting dynamic control of parameters
         animation_manager.trigger_animation("ring", {'color': outer_color,
                                                       'rotationSpeed' : 0.5,
-                                                      'armCount': 10 * (alice_basis - 1),
-                                                      'position': (0, 0.5)
+                                                      'armCount': 0,
+                                                      'size': 1,
+                                                      'growthSpeed': 0,
+                                                      'position': (0.25, 0)
                                                     })
         
         animation_manager.trigger_animation("ring", {'color': inner_color,
                                                       'rotationSpeed' : -0.5,
-                                                      'armCount' : 10 * (bob_basis - 1),
-                                                      'position' : (0, 0.5),
-                                                      'delay': 0.8})
+                                                      'armCount' : 0,
+                                                      'size': 1,
+                                                      'growthSpeed': 0,
+                                                      'position' : (-0.25, 0),
+                                                      'delay': 0})
 
     if animation_manager.current_section == 1:
     
