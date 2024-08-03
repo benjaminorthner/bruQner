@@ -1,6 +1,6 @@
 #version 330 core
 
-#define MAX_ANIMATIONS 30
+#define MAX_ANIMATIONS __MAX_ANIMATIONS__
 
 uniform vec2 iResolution;
 uniform float iTime;

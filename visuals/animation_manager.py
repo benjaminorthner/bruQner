@@ -8,7 +8,7 @@ import os
 import importlib
 from pythonosc import dispatcher, osc_server
 
-from visuals_config import PERFORMANCE_MODULE, USE_OSC, RESOLUTION, MY_IP, MY_PORT
+from visuals_config import PERFORMANCE_MODULE, USE_OSC, RESOLUTION, MY_IP, MY_PORT, MAX_ANIMATIONS
 
 # Force the use of the NVIDIA GPU
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -38,6 +38,9 @@ def create_shader_program():
     # import GLSL fragment shader source code
     with open(os.path.join(os.path.dirname(__file__), 'fragment_shader.glsl'), 'r') as file:
         fragment_shader_code = file.read()
+
+    # Add the MAX_ANIMATIONS value to the shader code
+    fragment_shader_code = fragment_shader_code.replace('#define MAX_ANIMATIONS __MAX_ANIMATIONS__', f'#define MAX_ANIMATIONS {MAX_ANIMATIONS}')
 
     # define vertex shader code
     vertex_shader_code = """

@@ -6,8 +6,10 @@ def run_performance(osc_address, *args):
     # extract the animation manager from args
     animation_manager = args[0][0]
 
-    # Phone triggers only snd a single number. So 2 args (animation manager + 1 number). Generate a random state for those
+    # If len(args) == 2 then the osc message came from a phone (does not send a full list of measurement results)
     if len(args) == 2:
+        # generate a fake random measurement result and put it into the args format as if it came from the measurement setup
+        # also removes the [animation manager] originally stored in args[0]
         args = [random.choice([1,2]), random.choice([1,2]), random.choice([-1,1]), random.choice([-1,1])]
 
     # process measurement
