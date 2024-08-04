@@ -15,15 +15,22 @@ def smoothstep(edge0, edge1, x):
     # Evaluate polynomial
     return x * x * (3 - 2 * x)
 
-def smoothwiggle(t, frequency, seed):
-    t *= frequency
-    a = R([math.floor(t), seed]) * 2.0 - 1.0
-    b = R([math.ceil(t), seed]) * 2.0 - 1.0
-    
-    t -= math.floor(t)
-    
-    # Mix function integrated directly
-    return a * (1 - smoothstep(0.0, 1.0, t)) + b * smoothstep(0.0, 1.0, t)
+def mix(a, b, t):
+    return a * (1 - t) + b * t
+
+def smoothwiggle(t, frequency, seed, octaves=1):
+
+    wiggle = 0
+    for octave in range(1, octaves + 1):
+        t *= frequency * (octave * octave)
+        a = R([math.floor(t), seed]) * 2.0 - 1.0
+        b = R([math.ceil(t), seed]) * 2.0 - 1.0
+        
+        t -= math.floor(t)
+
+        wiggle += mix(a, b, smoothstep(0, 1, t))
+
+    return wiggle 
 
 def run_performance(osc_address, *args):
 
@@ -45,18 +52,31 @@ def run_performance(osc_address, *args):
     blue = (0.2,0.2,1)
     purple = (0.5, 0, 0.5)
 
+    c0 = (1.0, 0.5, 0.5) # red
+    c1 = (0.5, 0.5, 1.0) # blue
+    c2 = (1.0, 1.0, 0.5) # yellow
+    c3 = (1.0, 0.5, 1.0) # purple
+
     # Measurement animation for first section
     if animation_manager.current_section == 0:
 
         # measurement -> music logic
-        outer_color = red if alice_measurement == 1 else blue
-        
-        inner_color = white
-        if bob_measurement == -1:
-            if outer_color == red:
-                inner_color = blue
-            else:
-                inner_color = red 
+
+        # choose color set based on matching or non matching measurements
+        if alice_measurement == bob_measurement:
+            left_color = c0 
+            right_color = c1 
+        else:
+            left_color = c2
+            right_color = c3
+
+        # based on exact measurement swap the order of the colors
+        if alice_measurement == -1: 
+            left_color, right_color = right_color, left_color
+
+        # circles move away from each other if basis the same, otherwise towards each other
+        direction = 1 if alice_basis == bob_basis else -1
+
 
         # parameters
         lifetime = 5.5
@@ -69,16 +89,18 @@ def run_performance(osc_address, *args):
         growthSpeed = 0.02
         thickness = 0.04
 
-        initial_x = 0.25
-        x_speed = 0.1
+        x_speed = 0.08
+        # initial x depends on direction
+        nearest_x = 0.25
+        initial_x = nearest_x + (0 if direction == 1 else x_speed*lifetime)
 
         wiggle_amplitude = 0.01
         wiggle_frequency = 10
 
-        position_x = lambda seed, t: initial_x + t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
+        position_x = lambda seed, t: initial_x + direction * t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
         position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
 
-        animation_manager.trigger_animation("ring", {'color': outer_color,
+        animation_manager.trigger_animation("ring", {'color': left_color,
                                                       'rotationSpeed': 0.5,
                                                       'armCount': 0,
                                                       'thickness': thickness,
@@ -90,7 +112,7 @@ def run_performance(osc_address, *args):
                                                     }
                                                     })
         
-        animation_manager.trigger_animation("ring", {'color': inner_color,
+        animation_manager.trigger_animation("ring", {'color': right_color,
                                                       'rotationSpeed': -0.5,
                                                       'armCount': 0,
                                                       'thickness': thickness,
@@ -102,80 +124,43 @@ def run_performance(osc_address, *args):
                                                     }
                                                     })
 
-    if animation_manager.current_section == 1:
-    
-        pol = (alice_measurement, bob_measurement)
-        
-        if pol == (1,1):
-            color = white
-        elif pol == (1,-1):
-            color = red
-        elif pol == (-1, 1):
-            color = blue
-        elif pol == (-1, -1):
-            color = purple
+    elif animation_manager.current_section == 1:
+        pass
 
-        xPosShift = 1.5*(2*random.random() - 1)
-        yPosShift = 0.5*(2*random.random() - 1)
-        lifetime = random.uniform(0.8, 1.5)
-        growthSpeed = random.uniform(0.25, 0.15)
+    elif animation_manager.current_section == 2:
 
-        animation_manager.trigger_animation("ring", {'color': color,
-                                                      'rotationSpeed' : alice_basis * 5,
-                                                      'armCount': 20 * (bob_basis-1),
-                                                      'position': (xPosShift, 0.5 + yPosShift),
-                                                      'growthSpeed' : growthSpeed,
-                                                      'lifetime' : lifetime,
-                                                      'thickness' : 0.1
-                                                    })
+        lifetime = 5
+        fadeout_length = 0.5
+        fadein_length = 2
+        initial_thickness = 0.1
+        thickness = lambda t: initial_thickness * smoothstep(-0.5, fadein_length, t) * smoothstep(lifetime - fadeout_length, 0, t)
 
-    if animation_manager.current_section == 2:
-        outer_color = red if alice_measurement == 1 else blue
-        
-        inner_color = white
-        if bob_measurement == -1:
-            if outer_color == red:
-                inner_color = blue
-            else:
-                inner_color = red 
+        growthSpeed = 0.22
+        x_position = 0.35
 
-        xPositions = np.linspace(-0.9, 0.9, 4)
-        if random.choice([0, 1]) == 1:
-            xPositions = np.flip(xPositions)
+        rings_per_trigger = 4
+        delay_between_rings = 1.8
 
-        initialSize = random.uniform(0.1, 0.28)
-        growthSpeed = random.uniform(-0.03, -0.05) 
-        animation_manager.trigger_animation("ring", {'color': outer_color,
-                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
-                                                      'armCount': random.choice([10, 30]) * (alice_basis - 1),
-                                                      'position': [xPositions[0], 0.45],
-                                                      'growthSpeed' : growthSpeed, 
-                                                      'size' : initialSize, 
-                                                    })
+        # make set of rings for each trigger
+        for i in range(rings_per_trigger):
 
-        animation_manager.trigger_animation("ring", {'color': inner_color,
-                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
-                                                      'armCount': random.choice([10, 30]) * (alice_basis - 1),
-                                                      'position' : [xPositions[1], 0.6],
-                                                      'growthSpeed' : growthSpeed,
-                                                      'size' : initialSize,
-                                                      'delay': random.uniform(0.8, 1),
-                                                      })
+            # two rings with different x_pos
+            for x_pos in [x_position, -x_position]:
+                animation_manager.trigger_animation("ring", {'color': white,
+                                                            'rotationSpeed': 0.5,
+                                                            'armCount': 0,
+                                                            'lifetime': lifetime,
+                                                            'position': (x_pos, 0),
+                                                            'delay' : delay_between_rings * i,
+                                                            'dynamic': {
+                                                                'size': lambda t: growthSpeed * t,  
+                                                                'thickness' : thickness
+                                                            }
+                                                            })
 
-        animation_manager.trigger_animation("ring", {'color': inner_color,
-                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
-                                                      'armCount': random.choice([10, 30]) * (bob_basis - 1),
-                                                      'position' : [xPositions[2], 0.6],
-                                                      'growthSpeed' : growthSpeed,
-                                                      'size' : initialSize,
-                                                      'delay': random.uniform(0.8, 1.2),
-                                                      })
-        
-        animation_manager.trigger_animation("ring", {'color': inner_color,
-                                                      'rotationSpeed' : 0.5 * random.choice([0.5, 1, 2]) * random.choice([1, -1]),
-                                                      'armCount': random.choice([10, 30]) * (bob_basis - 1),
-                                                      'position' : [xPositions[3], 0.45],
-                                                      'growthSpeed' : growthSpeed,
-                                                      'size' : initialSize, 
-                                                      'delay': random.uniform(0.8, 1.2),
-                                                      })
+
+    elif animation_manager.current_section == 3:
+        pass
+
+    elif animation_manager.current_section == 4:
+        pass

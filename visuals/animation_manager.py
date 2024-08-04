@@ -176,6 +176,10 @@ class AnimationManager:
         for i, animation in enumerate(self.animations):
             animation.render(shader_program, i)
 
+    def clear_all_animations(self):
+        for animation in self.animations[:]:
+            self.animations.remove(animation)
+
 
 # OSC handler functions
 def change_section_handler(unused_addr, *args):
@@ -242,6 +246,9 @@ def main():
                 # manually trigger random measurement with 'r' key
                 if event.key == K_r:
                     run_performance("/bruQner/visuals/ring", [animation_manager], 0)
+
+                elif event.key == K_x:
+                    animation_manager.clear_all_animations()
 
                 # manually change section with number keys
                 elif event.key in [eval(f'K_{i}') for i in range(10)]:

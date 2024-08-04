@@ -38,5 +38,5 @@ def run_performance(osc_address, *args):
                                             )
 
     # animation for first section
-    if animation_manager.current_section == 1:
+    elif animation_manager.current_section == 1:
         pass
