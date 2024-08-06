@@ -18,7 +18,7 @@ def smoothstep(edge0, edge1, x):
 def mix(a, b, t):
     return a * (1 - t) + b * t
 
-def smoothwiggle(t, frequency, seed, octaves=1):
+def smoothwiggle(t, frequency, seed=random.randint(0, 1e16), octaves=1):
 
     wiggle = 0
     for octave in range(1, octaves + 1):
@@ -100,12 +100,13 @@ def run_performance(osc_address, *args):
         position_x = lambda seed, t: initial_x + direction * t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
         position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
 
+        
         animation_manager.trigger_animation("ring", {'color': left_color,
-                                                      'rotationSpeed': 0.5,
-                                                      'armCount': 0,
-                                                      'thickness': thickness,
-                                                      'lifetime': lifetime,
-                                                      'dynamic': {
+                                                    'rotationSpeed': 0.5,
+                                                    'armCount': 0,
+                                                    'thickness': thickness,
+                                                    'lifetime': lifetime,
+                                                    'dynamic': {
                                                         'size': lambda t: initial_size + growthSpeed * t,  
                                                         'opacity': opacity,
                                                         'position': lambda t: (position_x(seed=0, t=t), position_y(seed=1, t=t)),
@@ -138,25 +139,45 @@ def run_performance(osc_address, *args):
         growthSpeed = 0.22
         x_position = 0.35
 
+        wiggle_amplitude = 0.15
+        x_wiggle = lambda t, seed: wiggle_amplitude * smoothstep(lifetime, 0, t) * smoothwiggle(t, frequency=2, seed=seed, octaves=1)
+        y_wiggle = lambda t, seed: wiggle_amplitude * smoothstep(lifetime, 0, t) * smoothwiggle(t, frequency=2, seed=seed, octaves=1)
+
         rings_per_trigger = 4
         delay_between_rings = 1.8
 
         # make set of rings for each trigger
         for i in range(rings_per_trigger):
+            
+            if alice_measurement == -1:
+                color = c0
+            else:
+                color = c1
 
-            # two rings with different x_pos
-            for x_pos in [x_position, -x_position]:
-                animation_manager.trigger_animation("ring", {'color': white,
-                                                            'rotationSpeed': 0.5,
-                                                            'armCount': 0,
-                                                            'lifetime': lifetime,
-                                                            'position': (x_pos, 0),
-                                                            'delay' : delay_between_rings * i,
-                                                            'dynamic': {
-                                                                'size': lambda t: growthSpeed * t,  
-                                                                'thickness' : thickness
-                                                            }
-                                                            })
+            animation_manager.trigger_animation("ring", {'color': color,
+                                                        'rotationSpeed': 0.5,
+                                                        'armCount': 0,
+                                                        'lifetime': lifetime,
+                                                        'delay' : delay_between_rings * i,
+                                                        'dynamic': {
+                                                            'size': lambda t: growthSpeed * t,  
+                                                            'thickness' : thickness,
+                                                            'position': lambda t, seed=4*i: (x_position + x_wiggle(t, seed), y_wiggle(t, seed+1)),
+                                                        }
+
+                                                        })
+            animation_manager.trigger_animation("ring", {'color': color,
+                                                        'rotationSpeed': 0.5,
+                                                        'armCount': 0,
+                                                        'lifetime': lifetime,
+                                                        'delay' : delay_between_rings * i,
+                                                        'dynamic': {
+                                                            'size': lambda t: growthSpeed * t,  
+                                                            'thickness' : thickness,
+                                                            'position': lambda t, seed=4*i: (-x_position + x_wiggle(t, seed+2), y_wiggle(t, seed+3)),
+                                                        }
+                                                        })
+
 
 
     elif animation_manager.current_section == 3:
@@ -164,3 +185,47 @@ def run_performance(osc_address, *args):
 
     elif animation_manager.current_section == 4:
         pass
+
+    elif animation_manager.current_section == 5:
+
+        color_right = c0 if alice_measurement == 1 else c2
+        color_left = c1 if bob_measurement == 1 else c0
+
+        direction_right = 1 if alice_basis == 1 else -1
+        direction_left = 1 if bob_basis == 1 else -1
+        rotation_speed = 1
+
+        lifetime = 5
+        fadeout_length = 0.5
+        fadein_length = 0.3
+        opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
+
+        initial_size = 3
+        size = lambda t: initial_size - 2.5 * smoothstep(0, fadein_length, t) - 0.06*t
+
+
+        x_position = 0.35
+
+        animation_manager.trigger_animation("ring", {'color': color_right,
+                                                    'armCount': 10,
+                                                    'thickness': 0.02,
+                                                    'rotationSpeed': direction_right * rotation_speed,
+                                                    'lifetime': lifetime,
+                                                    'position': (x_position, 0),
+                                                    'dynamic': {
+                                                        'size': size,  
+                                                        'opacity': opacity,
+                                                    }
+                                                    })
+
+        animation_manager.trigger_animation("ring", {'color': color_left,
+                                                    'armCount': 10,
+                                                    'thickness': 0.02,
+                                                    'rotationSpeed': direction_left * rotation_speed,
+                                                    'lifetime': lifetime,
+                                                    'position': (-x_position, 0),
+                                                    'dynamic': {
+                                                        'size': size,  
+                                                        'opacity': opacity,
+                                                    }
+                                                    })

@@ -6,6 +6,7 @@ import numpy
 import threading
 import os
 import importlib
+import copy
 from pythonosc import dispatcher, osc_server
 
 from visuals_config import PERFORMANCE_MODULE, USE_OSC, RESOLUTION, MY_IP, MY_PORT, MAX_ANIMATIONS
@@ -156,6 +157,7 @@ class AnimationManager:
         self.current_section = 0
 
     def trigger_animation(self, animation_type, parameters=None):
+
         current_time = pygame.time.get_ticks() / 1000.0
 
         if animation_type == "ring":
