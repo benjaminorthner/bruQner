@@ -21,8 +21,8 @@ def run_performance(osc_address, *args):
     blue = (0.2,0.2,1)
     purple = (0.5, 0, 0.5)
 
-    # animation for zeroth section
-    if animation_manager.current_section == 0:
+    # animation for first section (index sections starting from 1)
+    if animation_manager.current_section == 1:
         
         initialSize = 0
         initialThickness = 0.015
@@ -38,5 +38,5 @@ def run_performance(osc_address, *args):
                                             )
 
     # animation for first section
-    elif animation_manager.current_section == 1:
+    elif animation_manager.current_section == 2:
         pass

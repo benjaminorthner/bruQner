@@ -6,7 +6,6 @@ import numpy
 import threading
 import os
 import importlib
-import copy
 from pythonosc import dispatcher, osc_server
 
 from visuals_config import PERFORMANCE_MODULE, USE_OSC, RESOLUTION, MY_IP, MY_PORT, MAX_ANIMATIONS
@@ -28,6 +27,12 @@ def init_pygame_opengl():
 
     pygame.init()
 
+
+    # setup icon
+    icon_path = os.path.join(os.path.dirname(__file__), 'visuals_icon.png')
+    icon = pygame.image.load(icon_path)
+    pygame.display.set_icon(icon)
+
     # create viewport
     screen = pygame.display.set_mode(RESOLUTION, DOUBLEBUF | OPENGL)
     #glViewport(0, 0, 1920, 1080)
@@ -37,7 +42,7 @@ def init_pygame_opengl():
 
 def create_shader_program():
     # import GLSL fragment shader source code
-    with open(os.path.join(os.path.dirname(__file__), 'fragment_shader.glsl'), 'r') as file:
+    with open(os.path.join(os.path.dirname(__file__), 'fragment_shader_noverlap.glsl'), 'r') as file:
         fragment_shader_code = file.read()
 
     # Add the MAX_ANIMATIONS value to the shader code
@@ -154,16 +159,18 @@ class LineAnimation(Animation):
 class AnimationManager:
     def __init__(self):
         self.animations = []
-        self.current_section = 0
+        self.current_section = 1 # indexing sections starting from 1
+        self.total_trigger_count = 0 # counts total number of animations
+        self.section_trigger_count = 0 # counts number of animations in current section
 
     def trigger_animation(self, animation_type, parameters=None):
-
         current_time = pygame.time.get_ticks() / 1000.0
 
         if animation_type == "ring":
             new_animation = RingAnimation(current_time, parameters)
         elif animation_type == "line":
             new_animation = LineAnimation(current_time, parameters)
+        
         self.animations.append(new_animation)
 
     def update_animations(self):
@@ -182,10 +189,18 @@ class AnimationManager:
         for animation in self.animations[:]:
             self.animations.remove(animation)
 
+    def count_trigger(self):
+        self.section_trigger_count+= 1
+        self.total_trigger_count += 1
+
+    def update_section(self, new_section:int):
+        self.current_section = new_section
+        self.section_trigger_count = 0
+
 
 # OSC handler functions
 def change_section_handler(unused_addr, *args):
-    animation_manager.current_section = int(args[0])
+    animation_manager.update_section(int(args[0]))
     print(f'Section changed to {animation_manager.current_section}')
 
 def default_handler(addr, *args):
@@ -228,12 +243,15 @@ def main():
     # init the animation manager
     animation_manager = AnimationManager()
 
-    # load perforamnce setup in config file
-    run_performance = load_performance_module(PERFORMANCE_MODULE)
+    # load perforamnce setup in config file.
+    # first run the trigger counter and return the performance function
+    def run_performance():
+        animation_manager.count_trigger()
+        return load_performance_module(PERFORMANCE_MODULE)
     
     # Start OSC server in a separate thread
     if USE_OSC: 
-        osc_thread = threading.Thread(target=start_osc_server, args=(run_performance, animation_manager))
+        osc_thread = threading.Thread(target=start_osc_server, args=(run_performance(), animation_manager))
         osc_thread.daemon = True
         osc_thread.start()
 
@@ -247,7 +265,7 @@ def main():
 
                 # manually trigger random measurement with 'r' key
                 if event.key == K_r:
-                    run_performance("/bruQner/visuals/ring", [animation_manager], 0)
+                    run_performance()("/bruQner/visuals/ring", [animation_manager], 0)
 
                 elif event.key == K_x:
                     animation_manager.clear_all_animations()

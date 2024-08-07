@@ -29,7 +29,7 @@ def run_performance(osc_address, *args):
     lifetime = 8
 
     # Measurement animation for first section
-    if animation_manager.current_section == 0:
+    if animation_manager.current_section == 1:
         outer_color = red if alice_measurement == 1 else blue
         
         inner_color = white
@@ -65,7 +65,7 @@ def run_performance(osc_address, *args):
                                                     }
                                             )
 
-    if animation_manager.current_section == 1:
+    if animation_manager.current_section == 2:
     
         pol = (alice_measurement, bob_measurement)
         
@@ -95,7 +95,7 @@ def run_performance(osc_address, *args):
                                                         }
                                                     })
 
-    if animation_manager.current_section == 2:
+    if animation_manager.current_section == 3:
         outer_color = red if alice_measurement == 1 else blue
         
         inner_color = white
