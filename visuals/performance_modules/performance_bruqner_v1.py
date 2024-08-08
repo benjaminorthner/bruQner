@@ -60,9 +60,8 @@ def run_performance(osc_address, *args):
 
     # Measurement animation for first section
     if animation_manager.current_section == 1:
-        print(animation_manager.total_trigger_count, animation_manager.section_trigger_count)
-        # measurement -> music logic
 
+        # measurement -> music logic
         # choose color set based on matching or non matching measurements
         if alice_measurement == bob_measurement:
             color_left = c0 
@@ -184,7 +183,80 @@ def run_performance(osc_address, *args):
 
 
     elif animation_manager.current_section == 4:
-        pass
+
+        # measurement -> music logic
+        # choose color set based on matching or non matching measurements
+        if alice_measurement == bob_measurement:
+            color_left = c0 
+            color_right = c1 
+        else:
+            color_left = c2
+            color_right = c3
+
+        # based on exact measurement swap the order of the colors
+        if alice_measurement == -1: 
+            color_left, color_right = color_right, color_left
+
+        # circles move away from each other if basis the same, otherwise towards each other
+        direction = 1 if alice_basis == bob_basis else -1
+
+
+        # parameters
+        lifetime = 5.5
+        fadeout_length = 0.5
+        fadein_length = 0.3
+
+        opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
+
+        initial_size = 0.7
+        growthSpeed = 0.02
+        thickness = 0.04
+
+        x_speed = 0.08
+        # initial x depends on direction
+        nearest_x = 0.25
+        initial_x = nearest_x + (0 if direction == 1 else x_speed*lifetime)
+
+        # add wiggle after a certain number of triggers
+        wiggle_amplitude = 0
+        if animation_manager.section_trigger_count > 1:
+            wiggle_amplitude = 0.01 * animation_manager.section_trigger_count
+
+        wiggle_frequency = 10
+
+        position_x = lambda seed, t: initial_x + direction * t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
+        position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
+
+        # if quantum show circles
+        if animation_manager.is_quantum == 1: 
+            animation_manager.trigger_animation("ring", {'color': color_left,
+                                                        'rotationSpeed': 0.5,
+                                                        'armCount': 0,
+                                                        'thickness': thickness,
+                                                        'lifetime': lifetime,
+                                                        'dynamic': {
+                                                            'size': lambda t: initial_size + growthSpeed * t,  
+                                                            'opacity': opacity,
+                                                            'position': lambda t: (-position_x(seed=0, t=t), position_y(seed=1, t=t)),
+                                                        }
+                                                        })
+            
+            animation_manager.trigger_animation("ring", {'color': color_right,
+                                                        'rotationSpeed': -0.5,
+                                                        'armCount': 0,
+                                                        'thickness': thickness,
+                                                        'lifetime': lifetime,
+                                                        'dynamic': {
+                                                            'size': lambda t: initial_size + growthSpeed * t,  
+                                                            'opacity': opacity,
+                                                            'position': lambda t: (position_x(seed=2, t=t), position_y(seed=3, t=t)),
+                                                        }
+                                                        })
+        # if not quantum show lines
+        else:
+            animation_manager.trigger_animation("line", {'color': white,
+
+            })
 
     elif animation_manager.current_section == 5:
         pass

@@ -162,6 +162,7 @@ class AnimationManager:
         self.current_section = 1 # indexing sections starting from 1
         self.total_trigger_count = 0 # counts total number of animations
         self.section_trigger_count = 0 # counts number of animations in current section
+        self.is_quantum = 1 # 1 if setup is currenlty producing entangles particles, 0 if state is classical
 
     def trigger_animation(self, animation_type, parameters=None):
         current_time = pygame.time.get_ticks() / 1000.0
@@ -197,11 +198,19 @@ class AnimationManager:
         self.current_section = new_section
         self.section_trigger_count = 0
 
+    def set_quantum_classical(self, is_quantum:int):
+        self.is_quantum = is_quantum
 
 # OSC handler functions
 def change_section_handler(unused_addr, *args):
     animation_manager.update_section(int(args[0]))
     print(f'Section changed to {animation_manager.current_section}')
+
+# args[0] == 0 if classical, args[0] == 1 if quantum
+def quantum_classical_handler(unused_addr, *args):
+    is_quantum = int(args[0])
+    animation_manager.set_quantum_classical(is_quantum)
+    print(f"Setup is {'QUANTUM' if is_quantum == 1 else 'CLASSICAL'}")
 
 def default_handler(addr, *args):
     print(f"Received OSC message: {addr} with arguments {args}")
@@ -210,6 +219,7 @@ def start_osc_server(run_performance, animation_manager):
     disp = dispatcher.Dispatcher()
     disp.map("/bruQner/visuals/ring", run_performance, animation_manager)
     disp.map("/bruQner/visuals/change_section", change_section_handler)
+    disp.map("/bruQner/visuals/is_quantum", quantum_classical_handler)
     disp.set_default_handler(default_handler)
     
     server = osc_server.ThreadingOSCUDPServer((MY_IP, MY_PORT), disp)
@@ -269,6 +279,11 @@ def main():
 
                 elif event.key == K_x:
                     animation_manager.clear_all_animations()
+
+                # toggle between quantum and non quantum system 
+                elif event.key == K_q:
+                    is_quantum = animation_manager.is_quantum
+                    quantum_classical_handler('', 0 if is_quantum == 1 else 1)
 
                 # manually change section with number keys
                 elif event.key in [eval(f'K_{i}') for i in range(10)]:
