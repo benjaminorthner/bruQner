@@ -21,8 +21,10 @@ uniform float armCounts[MAX_ANIMATIONS];
 
 // LINE UNIFORMS
 uniform vec3 lineColors[MAX_ANIMATIONS];
+uniform vec2 linePositions[MAX_ANIMATIONS];
+uniform float lineLengths[MAX_ANIMATIONS];
+uniform float lineAngles[MAX_ANIMATIONS];
 uniform float lineThicknesses[MAX_ANIMATIONS];
-uniform float lineYPositions[MAX_ANIMATIONS];
 uniform float lineOpacities[MAX_ANIMATIONS];
 
 out vec4 fragColor;
@@ -62,20 +64,39 @@ void main()
 
             if (currentAlpha > maxAlpha) {
                 maxAlpha = currentAlpha;
-                finalColor = ringColors[i] * ringOpacities[i];
+                finalColor = ringColors[i] * currentAlpha;
             }
  
         // Line Animation
         } else if (animationTypes[i] == 1) { 
-            float lineTime = time - animationStartTimes[i];
-            float y = uv.y - lineYPositions[i];
+            vec2 p = uv - linePositions[i];
+            float angle = lineAngles[i];
+            float len = lineLengths[i];
             float thickness = lineThicknesses[i];
-            float alpha = step(- thickness / 2.0, y) - step(thickness / 2.0, y); 
-            float currentAlpha = lineOpacities[i] * alpha;
+           
+            // Calculate the start and end points of the line
+            vec2 start = linePositions[i] - vec2(cos(angle), sin(angle)) * len / 2.0;
+            vec2 end = linePositions[i] + vec2(cos(angle), sin(angle)) * len / 2.0; 
+            // Calculate the distance from the start and end points
+            float distStart = length(uv - start);
+            float distEnd = length(uv - end);
 
+            // Calculate the perpendicular vector to the line
+            vec2 perp = vec2(-sin(angle), cos(angle));
+            
+            // Calculate the distance from the line
+            float dist = abs(dot(p, perp));
+            
+            float lineAlpha = 
+                smoothstep(thickness + thickness*0.2, thickness, dist) * ( // width mask
+                step(distStart, len / 2.0) + // after-start mask
+                step(distEnd, len / 2.0) // after-end mask
+                );
+            float currentAlpha = lineOpacities[i] * lineAlpha;
+            
             if (currentAlpha > maxAlpha) {
                 maxAlpha = currentAlpha;
-                finalColor = lineColors[i];
+                finalColor = lineColors[i] * currentAlpha;
             }
         }
     }

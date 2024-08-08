@@ -69,36 +69,15 @@ class Animation:
         self.parameters = parameters
         self.complete = False
 
-    def update(self, current_time):
-        pass
-
-    def is_complete(self):
-        return self.complete
-
-    def render(self, shader_program, index):
-        pass
-
-class RingAnimation(Animation):
-    def __init__(self, start_time, parameters):
-        super().__init__(start_time, parameters)
-
-        self.parameters = parameters
-
-        self.size = parameters.get('size', 1)
-        self.opacity = parameters.get('opacity', 1.0)
-        self.thickness = parameters.get('thickness', 0.015)
         self.color = parameters.get('color', (1,1,1))
-        # TODO use absolute angle instead of built in rotation. Update with dynamic parameter
-        self.rotationSpeed = parameters.get('rotationSpeed', 0)
-        self.armCount = parameters.get('armCount', 0)
+        self.opacity = parameters.get('opacity', 1.0)
+        self.delay = parameters.get('delay', 0)
         self.position = parameters.get('position', (0,0))
         self.lifetime = parameters.get('lifetime', 8)
-        self.delay = parameters.get('delay', 0)
-
+        
         self.dynamic_parameters = parameters.get('dynamic', {})
 
     def update(self, current_time):
-
         elapsed_time = current_time - self.start_time - self.delay
 
         # If delay not elapsed yet then elapsed time will be negative
@@ -123,46 +102,63 @@ class RingAnimation(Animation):
         if elapsed_time > self.lifetime:  
             self.complete = True
 
+    def is_complete(self):
+        return self.complete
+
     def render(self, shader_program, index):
+        pass
+
+class RingAnimation(Animation):
+    def __init__(self, start_time, parameters):
+        super().__init__(start_time, parameters)
+
+        self.size = parameters.get('size', 1)
+        self.thickness = parameters.get('thickness', 0.015)
+        # TODO use absolute angle instead of built in rotation. Update with dynamic parameter
+        self.rotationSpeed = parameters.get('rotationSpeed', 0)
+        self.armCount = parameters.get('armCount', 0)
+
+
+    def render(self, shader_program, index):
+        # pass shared uniforms
         glUniform1i(glGetUniformLocation(shader_program, f"animationTypes[{index}]"), 0)
         glUniform1f(glGetUniformLocation(shader_program, f"animationStartTimes[{index}]"), self.start_time)
+        # pass ring uniforms
         glUniform1f(glGetUniformLocation(shader_program, f"ringSizes[{index}]"), self.size)
         glUniform1f(glGetUniformLocation(shader_program, f"ringOpacities[{index}]"), self.opacity)
         glUniform1f(glGetUniformLocation(shader_program, f"ringThicknesses[{index}]"), self.thickness)
         glUniform1f(glGetUniformLocation(shader_program, f"rotationSpeeds[{index}]"), self.rotationSpeed)
         glUniform1f(glGetUniformLocation(shader_program, f"armCounts[{index}]"), self.armCount)
-        glUniform3f(glGetUniformLocation(shader_program, f"ringColors[{index}]"), *self.color)
         glUniform2f(glGetUniformLocation(shader_program, f"ringPositions[{index}]"), *self.position)
+        glUniform3f(glGetUniformLocation(shader_program, f"ringColors[{index}]"), *self.color)
         
 class LineAnimation(Animation):
     def __init__(self, start_time, parameters):
         super().__init__(start_time, parameters)
-        self.thickness= 0.01
-        self.opacity = 1
-        self.yPosition = parameters['yPosition']
-        self.color = parameters['color']
-
-    def update(self, current_time):
-        # Example logic for completing an animation after a certain duration
-        if current_time - self.start_time > 5:  # Line animation lasts 5 seconds
-            self.complete = True
+        self.thickness = parameters.get('thickness', 0.1)
+        self.length = parameters.get('length', 0.1)
+        self.angle = parameters.get('angle', 0.0)
 
     def render(self, shader_program, index):
+        # pass shared uniforms
         glUniform1i(glGetUniformLocation(shader_program, f"animationTypes[{index}]"), 1)
         glUniform1f(glGetUniformLocation(shader_program, f"animationStartTimes[{index}]"), self.start_time)
+        # pass line uniforms
         glUniform1f(glGetUniformLocation(shader_program, f"lineThicknesses[{index}]"), self.thickness)
-        glUniform1f(glGetUniformLocation(shader_program, f"lineYPositions[{index}]"), self.yPosition)
         glUniform1f(glGetUniformLocation(shader_program, f"lineOpacities[{index}]"), self.opacity)
+        glUniform1f(glGetUniformLocation(shader_program, f"lineLengths[{index}]"), self.length)
+        glUniform1f(glGetUniformLocation(shader_program, f"lineAngles[{index}]"), self.angle)
+        glUniform2f(glGetUniformLocation(shader_program, f"linePositions[{index}]"), *self.position)
         glUniform3f(glGetUniformLocation(shader_program, f"lineColors[{index}]"), *self.color)
 
 # Animation Manager
 class AnimationManager:
     def __init__(self):
         self.animations = []
-        self.current_section = 1 # indexing sections starting from 1
+        self.current_section = 4 # indexing sections starting from 1
         self.total_trigger_count = 0 # counts total number of animations
         self.section_trigger_count = 0 # counts number of animations in current section
-        self.is_quantum = 1 # 1 if setup is currenlty producing entangles particles, 0 if state is classical
+        self.is_quantum = 0 # 1 if setup is currenlty producing entangles particles, 0 if state is classical
 
     def trigger_animation(self, animation_type, parameters=None):
         current_time = pygame.time.get_ticks() / 1000.0

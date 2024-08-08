@@ -205,30 +205,31 @@ def run_performance(osc_address, *args):
         lifetime = 5.5
         fadeout_length = 0.5
         fadein_length = 0.3
-
         opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
-
-        initial_size = 0.7
-        growthSpeed = 0.02
-        thickness = 0.04
-
-        x_speed = 0.08
-        # initial x depends on direction
-        nearest_x = 0.25
-        initial_x = nearest_x + (0 if direction == 1 else x_speed*lifetime)
-
-        # add wiggle after a certain number of triggers
-        wiggle_amplitude = 0
-        if animation_manager.section_trigger_count > 1:
-            wiggle_amplitude = 0.01 * animation_manager.section_trigger_count
-
-        wiggle_frequency = 10
-
-        position_x = lambda seed, t: initial_x + direction * t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
-        position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
 
         # if quantum show circles
         if animation_manager.is_quantum == 1: 
+
+
+            initial_size = 0.7
+            growthSpeed = 0.02
+            thickness = 0.04
+
+            x_speed = 0.08
+            # initial x depends on direction
+            nearest_x = 0.25
+            initial_x = nearest_x + (0 if direction == 1 else x_speed*lifetime)
+
+            # add wiggle after a certain number of triggers
+            wiggle_amplitude = 0
+            if animation_manager.section_trigger_count > 1:
+                wiggle_amplitude = 0.01 * animation_manager.section_trigger_count
+
+            wiggle_frequency = 10
+
+            position_x = lambda seed, t: initial_x + direction * t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
+            position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
+
             animation_manager.trigger_animation("ring", {'color': color_left,
                                                         'rotationSpeed': 0.5,
                                                         'armCount': 0,
@@ -254,8 +255,17 @@ def run_performance(osc_address, *args):
                                                         })
         # if not quantum show lines
         else:
-            animation_manager.trigger_animation("line", {'color': white,
 
+            thickness = 0.01
+            animation_manager.trigger_animation("line", {'color': white,
+                                                        'thickness': thickness,
+                                                        'lifetime': lifetime,
+                                                        'dynamic': {
+                                                            'opacity': opacity,
+                                                            'angle': lambda t: 1 * t,
+                                                            'length': lambda t: np.sin(t) ** 2,
+                                                            'position': lambda t: (0.5 * np.sin(1.5*t), 0.4 * np.cos(2 * t + 0.1)),
+                                                        }
             })
 
     elif animation_manager.current_section == 5:
