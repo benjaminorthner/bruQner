@@ -132,6 +132,31 @@ class RingAnimation(Animation):
         glUniform2f(glGetUniformLocation(shader_program, f"ringPositions[{index}]"), *self.position)
         glUniform3f(glGetUniformLocation(shader_program, f"ringColors[{index}]"), *self.color)
         
+class DotRingAnimation(Animation):
+    def __init__(self, start_time, parameters):
+        super().__init__(start_time, parameters)
+
+        self.dotCount = parameters.get('dot_count', 10)
+        self.ringRadius = parameters.get('ring_radius', 1)
+        self.size = parameters.get('size', 0.03)
+        self.thickness = parameters.get('thickness', 0.03)
+        self.angle = parameters.get('angle', 0.0)
+
+
+    def render(self, shader_program, index):
+        # pass shared uniforms
+        glUniform1i(glGetUniformLocation(shader_program, f"animationTypes[{index}]"), 2)
+        glUniform1f(glGetUniformLocation(shader_program, f"animationStartTimes[{index}]"), self.start_time)
+        # pass ring uniforms
+        glUniform1f(glGetUniformLocation(shader_program, f"dotRingSizes[{index}]"), self.size)
+        glUniform1f(glGetUniformLocation(shader_program, f"dotRingDotCounts[{index}]"), self.dotCount)
+        glUniform1f(glGetUniformLocation(shader_program, f"dotRingOpacities[{index}]"), self.opacity)
+        glUniform1f(glGetUniformLocation(shader_program, f"dotRingThicknesses[{index}]"), self.thickness)
+        glUniform1f(glGetUniformLocation(shader_program, f"dotRingAngles[{index}]"), self.angle)
+        glUniform1f(glGetUniformLocation(shader_program, f"dotRingRadii[{index}]"), self.ringRadius)
+        glUniform2f(glGetUniformLocation(shader_program, f"dotRingPositions[{index}]"), *self.position)
+        glUniform3f(glGetUniformLocation(shader_program, f"dotRingColors[{index}]"), *self.color)
+
 class LineAnimation(Animation):
     def __init__(self, start_time, parameters):
         super().__init__(start_time, parameters)
@@ -140,7 +165,7 @@ class LineAnimation(Animation):
         self.angle = parameters.get('angle', 0.0)
 
     def render(self, shader_program, index):
-        # pass shared uniforms
+        # pass shared uniformsr
         glUniform1i(glGetUniformLocation(shader_program, f"animationTypes[{index}]"), 1)
         glUniform1f(glGetUniformLocation(shader_program, f"animationStartTimes[{index}]"), self.start_time)
         # pass line uniforms
@@ -155,10 +180,10 @@ class LineAnimation(Animation):
 class AnimationManager:
     def __init__(self):
         self.animations = []
-        self.current_section = 4 # indexing sections starting from 1
+        self.current_section = 8 # indexing sections starting from 1
         self.total_trigger_count = 0 # counts total number of animations
         self.section_trigger_count = 0 # counts number of animations in current section
-        self.is_quantum = 0 # 1 if setup is currenlty producing entangles particles, 0 if state is classical
+        self.is_quantum = 1 # 1 if setup is currenlty producing entangles particles, 0 if state is classical
 
     def trigger_animation(self, animation_type, parameters=None):
         current_time = pygame.time.get_ticks() / 1000.0
@@ -167,6 +192,8 @@ class AnimationManager:
             new_animation = RingAnimation(current_time, parameters)
         elif animation_type == "line":
             new_animation = LineAnimation(current_time, parameters)
+        elif animation_type == "dot_ring":
+            new_animation = DotRingAnimation(current_time, parameters)
         
         self.animations.append(new_animation)
 
@@ -208,6 +235,9 @@ def quantum_classical_handler(unused_addr, *args):
     animation_manager.set_quantum_classical(is_quantum)
     print(f"Setup is {'QUANTUM' if is_quantum == 1 else 'CLASSICAL'}")
 
+def clear_visuals_handler(unused_addr, *args):
+    animation_manager.clear_all_animations()
+
 def default_handler(addr, *args):
     print(f"Received OSC message: {addr} with arguments {args}")
 
@@ -216,6 +246,7 @@ def start_osc_server(run_performance, animation_manager):
     disp.map("/bruQner/visuals/ring", run_performance, animation_manager)
     disp.map("/bruQner/visuals/change_section", change_section_handler)
     disp.map("/bruQner/visuals/is_quantum", quantum_classical_handler)
+    disp.map("/bruQner/visuals/clear", clear_visuals_handler)
     disp.set_default_handler(default_handler)
     
     server = osc_server.ThreadingOSCUDPServer((MY_IP, MY_PORT), disp)
@@ -271,10 +302,10 @@ def main():
 
                 # manually trigger random measurement with 'r' key
                 if event.key == K_r:
-                    run_performance()("/bruQner/visuals/ring", [animation_manager], 0)
+                    run_performance()('', [animation_manager], 0)
 
                 elif event.key == K_x:
-                    animation_manager.clear_all_animations()
+                    clear_visuals_handler('')
 
                 # toggle between quantum and non quantum system 
                 elif event.key == K_q:

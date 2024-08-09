@@ -87,7 +87,7 @@ def run_performance(osc_address, *args):
 
         initial_size = 0.7
         growthSpeed = 0.02
-        thickness = 0.04
+        thickness = 0.08
 
         x_speed = 0.08
         # initial x depends on direction
@@ -137,7 +137,7 @@ def run_performance(osc_address, *args):
         lifetime = 5
         fadeout_length = 0.5
         fadein_length = 2
-        initial_thickness = 0.1
+        initial_thickness = 0.3
         thickness = lambda t: initial_thickness * smoothstep(-0.5, fadein_length, t) * smoothstep(lifetime - fadeout_length, 0, t)
 
         growthSpeed = 0.22
@@ -180,8 +180,6 @@ def run_performance(osc_address, *args):
                                                         }
                                                         })
 
-
-
     elif animation_manager.current_section == 4:
 
         # measurement -> music logic
@@ -213,7 +211,7 @@ def run_performance(osc_address, *args):
 
             initial_size = 0.7
             growthSpeed = 0.02
-            thickness = 0.04
+            thickness = 0.08
 
             x_speed = 0.08
             # initial x depends on direction
@@ -269,6 +267,7 @@ def run_performance(osc_address, *args):
             })
 
     elif animation_manager.current_section == 5:
+        # blank section
         pass
 
     elif animation_manager.current_section == 6:
@@ -286,6 +285,7 @@ def run_performance(osc_address, *args):
         opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
 
         initial_size = 3
+        thickness = 0.05
         size = lambda t: initial_size - 2.5 * smoothstep(0, fadein_length, t) - 0.06*t
 
 
@@ -293,7 +293,7 @@ def run_performance(osc_address, *args):
 
         animation_manager.trigger_animation("ring", {'color': color_left,
                                                     'armCount': 10,
-                                                    'thickness': 0.02,
+                                                    'thickness': thickness,
                                                     'rotationSpeed': direction_right * rotation_speed,
                                                     'lifetime': lifetime,
                                                     'position': (-x_position, 0),
@@ -305,7 +305,7 @@ def run_performance(osc_address, *args):
 
         animation_manager.trigger_animation("ring", {'color': color_right,
                                                     'armCount': 10,
-                                                    'thickness': 0.02,
+                                                    'thickness': thickness,
                                                     'rotationSpeed': direction_left * rotation_speed,
                                                     'lifetime': lifetime,
                                                     'position': (x_position, 0),
@@ -314,3 +314,28 @@ def run_performance(osc_address, *args):
                                                         'opacity': opacity,
                                                     }
                                                     })
+
+    elif animation_manager.current_section == 7:
+        pass
+
+    elif animation_manager.current_section == 8:
+
+        size = 0.05
+        thickness = 1
+        lifetime = 5
+        opacity = 1
+        dotCount = 10
+        ringRadius = 1
+        angle = 0
+        animation_manager.trigger_animation("dot_ring", {'color': white,
+                                                        'size': size,
+                                                        'thickness': thickness,
+                                                        'dotCount': dotCount,
+                                                        'ringRadius': ringRadius,
+                                                        'lifetime': lifetime,
+                                                        'dynamic': {
+                                                            'opacity': opacity,
+                                                            'position': lambda t: (0, 0),
+                                                            'angle': lambda t: t,
+                                                        }
+                                                        })

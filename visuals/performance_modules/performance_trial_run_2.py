@@ -24,7 +24,7 @@ def run_performance(osc_address, *args):
     purple = (0.5, 0, 0.5)
 
     initialSize = 0
-    initialThickness = 0.015
+    initialThickness = 0.03
     growthSpeed = 0.06
     lifetime = 8
 

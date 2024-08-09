@@ -1,5 +1,6 @@
 #version 330 core
 
+#define PI 3.14159265
 #define MAX_ANIMATIONS __MAX_ANIMATIONS__
 
 uniform vec2 iResolution;
@@ -7,7 +8,7 @@ uniform float iTime;
 
 // SHARED UNIFORMS
 uniform int animationCount; // Number of active animations
-uniform int animationTypes[MAX_ANIMATIONS]; // 0 for ring, 1 for line
+uniform int animationTypes[MAX_ANIMATIONS]; // 0 for ring, 1 for line, 2 for dotted ring
 uniform float animationStartTimes[MAX_ANIMATIONS];
 
 // RING UNIFORMS
@@ -26,6 +27,16 @@ uniform float lineLengths[MAX_ANIMATIONS];
 uniform float lineAngles[MAX_ANIMATIONS];
 uniform float lineThicknesses[MAX_ANIMATIONS];
 uniform float lineOpacities[MAX_ANIMATIONS];
+
+// DOTTED RING UNIFORMS
+uniform vec3 dotRingColors[MAX_ANIMATIONS];
+uniform vec2 dotRingPositions[MAX_ANIMATIONS];
+uniform float dotRingSizes[MAX_ANIMATIONS];
+uniform float dotRingRadii[MAX_ANIMATIONS];
+uniform float dotRingDotCounts[MAX_ANIMATIONS];
+uniform float dotRingOpacities[MAX_ANIMATIONS];
+uniform float dotRingThicknesses[MAX_ANIMATIONS];
+uniform float dotRingAngles[MAX_ANIMATIONS];
 
 out vec4 fragColor;
 
@@ -49,7 +60,7 @@ void main()
             float dist = length(p);
             float ringRadius = ringSizes[i];
             float ringThickness = ringThicknesses[i];
-            float ringAlpha = step(ringRadius - ringThickness, dist) - step(ringRadius + ringThickness, dist);
+            float ringAlpha = step(ringRadius - ringThickness, dist) - step(ringRadius, dist);
 
             // pinwheel ring
             float angle = atan(p.y, p.x) + 0.2 * time * rotationSpeeds[i];
@@ -86,9 +97,10 @@ void main()
             
             // Calculate the distance from the line
             float dist = abs(dot(p, perp));
-            
+
+            float AA_factor = 0.2;
             float lineAlpha = 
-                smoothstep(thickness + thickness*0.2, thickness, dist) * ( // width mask
+                smoothstep(thickness + thickness*AA_factor, thickness, dist) * ( // width mask
                 step(distStart, len / 2.0) + // after-start mask
                 step(distEnd, len / 2.0) // after-end mask
                 );
@@ -97,6 +109,28 @@ void main()
             if (currentAlpha > maxAlpha) {
                 maxAlpha = currentAlpha;
                 finalColor = lineColors[i] * currentAlpha;
+            }
+        
+        // Dotted Ring Animation
+        } else if (animationTypes[i] == 2) { 
+            
+            for (int j = 0; j < dotRingDotCounts[i]; j++){
+                float theta = j * 2.0 * PI / dotRingDotCounts[i] + dotRingAngles[i];
+
+                vec2 p = uv - dotRingPositions[i] + dotRingRadii[i] * vec2(sin(theta), cos(theta)) ;
+                float dist = length(p);
+                float ringRadius = dotRingSizes[i];
+                float ringThickness = dotRingThicknesses[i];
+                float ringAlpha = step(ringRadius - ringThickness, dist) - step(ringRadius, dist);
+
+                float angle = dotRingAngles[i];
+
+                float currentAlpha = dotRingOpacities[i] * ringAlpha;
+
+                if (currentAlpha > maxAlpha) {
+                    maxAlpha = currentAlpha;
+                    finalColor = dotRingColors[i] * currentAlpha;
+                }
             }
         }
     }
