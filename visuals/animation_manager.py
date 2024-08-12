@@ -64,10 +64,16 @@ def create_shader_program():
 
 # Animation classes
 class Animation:
+
+    allowed_parameters = ['color', 'opacity', 'position', 'lifetime', 'delay', 'dynamic']
+
     def __init__(self, start_time, parameters=None):
         self.start_time = start_time
         self.parameters = parameters
         self.complete = False
+
+        if parameters is not None:
+            self.validate_parameters(self.parameters)
 
         self.color = parameters.get('color', (1,1,1))
         self.opacity = parameters.get('opacity', 1.0)
@@ -102,6 +108,19 @@ class Animation:
         if elapsed_time > self.lifetime:  
             self.complete = True
 
+    # checks if the passed parameters are all valid
+    def validate_parameters(self, parameters):
+        # get allowed parameters from subclass and add base class allowed parameters
+        allowed_parameters = getattr(self, 'allowed_parameters', []) + Animation.allowed_parameters
+
+        for parameter, value in parameters.items():
+            if parameter not in allowed_parameters:
+                raise ValueError(f"Invalid parameter '{parameter}'. Allowed parameters are {allowed_parameters}")
+
+            # if parameter is dynamic, validate all those nested parameters too
+            if parameter == 'dynamic' and isinstance(value, dict):
+                self.validate_parameters(value)
+
     def is_complete(self):
         return self.complete
 
@@ -109,6 +128,9 @@ class Animation:
         pass
 
 class RingAnimation(Animation):
+
+    allowed_parameters = ['size', 'thickness', 'rotation_speed', 'arm_count']
+
     def __init__(self, start_time, parameters):
         super().__init__(start_time, parameters)
 
@@ -133,6 +155,9 @@ class RingAnimation(Animation):
         glUniform3f(glGetUniformLocation(shader_program, f"ringColors[{index}]"), *self.color)
         
 class DotRingAnimation(Animation):
+
+    allowed_parameters = ['dot_size', 'dot_thickness', 'dot_count', 'ring_radius', 'angle']
+
     def __init__(self, start_time, parameters):
         super().__init__(start_time, parameters)
 
@@ -158,6 +183,9 @@ class DotRingAnimation(Animation):
         glUniform3f(glGetUniformLocation(shader_program, f"dotRingColors[{index}]"), *self.color)
 
 class LineAnimation(Animation):
+
+    allowed_parameters = ['thickness', 'length', 'angle']
+
     def __init__(self, start_time, parameters):
         super().__init__(start_time, parameters)
         self.thickness = parameters.get('thickness', 0.1)
