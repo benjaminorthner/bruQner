@@ -115,8 +115,8 @@ class RingAnimation(Animation):
         self.size = parameters.get('size', 1)
         self.thickness = parameters.get('thickness', 0.015)
         # TODO use absolute angle instead of built in rotation. Update with dynamic parameter
-        self.rotationSpeed = parameters.get('rotationSpeed', 0)
-        self.armCount = parameters.get('armCount', 0)
+        self.rotation_speed = parameters.get('rotation_speed', 0)
+        self.arm_count = parameters.get('arm_count', 0)
 
 
     def render(self, shader_program, index):
@@ -127,8 +127,8 @@ class RingAnimation(Animation):
         glUniform1f(glGetUniformLocation(shader_program, f"ringSizes[{index}]"), self.size)
         glUniform1f(glGetUniformLocation(shader_program, f"ringOpacities[{index}]"), self.opacity)
         glUniform1f(glGetUniformLocation(shader_program, f"ringThicknesses[{index}]"), self.thickness)
-        glUniform1f(glGetUniformLocation(shader_program, f"rotationSpeeds[{index}]"), self.rotationSpeed)
-        glUniform1f(glGetUniformLocation(shader_program, f"armCounts[{index}]"), self.armCount)
+        glUniform1f(glGetUniformLocation(shader_program, f"rotationSpeeds[{index}]"), self.rotation_speed)
+        glUniform1f(glGetUniformLocation(shader_program, f"armCounts[{index}]"), self.arm_count)
         glUniform2f(glGetUniformLocation(shader_program, f"ringPositions[{index}]"), *self.position)
         glUniform3f(glGetUniformLocation(shader_program, f"ringColors[{index}]"), *self.color)
         
@@ -136,10 +136,10 @@ class DotRingAnimation(Animation):
     def __init__(self, start_time, parameters):
         super().__init__(start_time, parameters)
 
-        self.dotCount = parameters.get('dot_count', 10)
-        self.ringRadius = parameters.get('ring_radius', 1)
-        self.size = parameters.get('size', 0.03)
-        self.thickness = parameters.get('thickness', 0.03)
+        self.dot_count = parameters.get('dot_count', 10)
+        self.ring_radius = parameters.get('ring_radius', 1.0)
+        self.dot_size = parameters.get('dot_size', 0.03)
+        self.dot_thickness = parameters.get('dot_thickness', 0.03)
         self.angle = parameters.get('angle', 0.0)
 
 
@@ -148,12 +148,12 @@ class DotRingAnimation(Animation):
         glUniform1i(glGetUniformLocation(shader_program, f"animationTypes[{index}]"), 2)
         glUniform1f(glGetUniformLocation(shader_program, f"animationStartTimes[{index}]"), self.start_time)
         # pass ring uniforms
-        glUniform1f(glGetUniformLocation(shader_program, f"dotRingSizes[{index}]"), self.size)
-        glUniform1f(glGetUniformLocation(shader_program, f"dotRingDotCounts[{index}]"), self.dotCount)
+        glUniform1f(glGetUniformLocation(shader_program, f"dotRingSizes[{index}]"), self.dot_size)
+        glUniform1i(glGetUniformLocation(shader_program, f"dotRingDotCounts[{index}]"), self.dot_count)
         glUniform1f(glGetUniformLocation(shader_program, f"dotRingOpacities[{index}]"), self.opacity)
-        glUniform1f(glGetUniformLocation(shader_program, f"dotRingThicknesses[{index}]"), self.thickness)
+        glUniform1f(glGetUniformLocation(shader_program, f"dotRingThicknesses[{index}]"), self.dot_thickness)
         glUniform1f(glGetUniformLocation(shader_program, f"dotRingAngles[{index}]"), self.angle)
-        glUniform1f(glGetUniformLocation(shader_program, f"dotRingRadii[{index}]"), self.ringRadius)
+        glUniform1f(glGetUniformLocation(shader_program, f"dotRingRadii[{index}]"), self.ring_radius)
         glUniform2f(glGetUniformLocation(shader_program, f"dotRingPositions[{index}]"), *self.position)
         glUniform3f(glGetUniformLocation(shader_program, f"dotRingColors[{index}]"), *self.color)
 

@@ -33,7 +33,7 @@ uniform vec3 dotRingColors[MAX_ANIMATIONS];
 uniform vec2 dotRingPositions[MAX_ANIMATIONS];
 uniform float dotRingSizes[MAX_ANIMATIONS];
 uniform float dotRingRadii[MAX_ANIMATIONS];
-uniform float dotRingDotCounts[MAX_ANIMATIONS];
+uniform int dotRingDotCounts[MAX_ANIMATIONS];
 uniform float dotRingOpacities[MAX_ANIMATIONS];
 uniform float dotRingThicknesses[MAX_ANIMATIONS];
 uniform float dotRingAngles[MAX_ANIMATIONS];
@@ -114,23 +114,37 @@ void main()
         // Dotted Ring Animation
         } else if (animationTypes[i] == 2) { 
             
-            for (int j = 0; j < dotRingDotCounts[i]; j++){
-                float theta = j * 2.0 * PI / dotRingDotCounts[i] + dotRingAngles[i];
+            int n = dotRingDotCounts[i];
 
-                vec2 p = uv - dotRingPositions[i] + dotRingRadii[i] * vec2(sin(theta), cos(theta)) ;
-                float dist = length(p);
-                float ringRadius = dotRingSizes[i];
-                float ringThickness = dotRingThicknesses[i];
-                float ringAlpha = step(ringRadius - ringThickness, dist) - step(ringRadius, dist);
+            // Calculate the current position relative to the ring center
+            vec2 p = uv - dotRingPositions[i];
 
-                float angle = dotRingAngles[i];
+            // Calculate radius and angle from the center of the ring
+            float r = length(p);
+            float theta = atan(p.y, p.x) + dotRingAngles[i];
 
-                float currentAlpha = dotRingOpacities[i] * ringAlpha;
+            // Shift angle into repetition sample region
+            theta -= (2.0 * PI / n) * floor((PI/n + theta) / (2.0 * PI / n));
 
-                if (currentAlpha > maxAlpha) {
-                    maxAlpha = currentAlpha;
-                    finalColor = dotRingColors[i] * currentAlpha;
-                }
+            // calculate the position vector shifted back into the repetition region
+            p = r * vec2(cos(theta), sin(theta));
+
+            // Calculate the distance of the current point in the repetition region to the sample dot that is to be repeated
+            float dist = length(p - vec2(dotRingRadii[i], 0.0));
+
+            float dotSize = dotRingSizes[i];
+            float dotThickness = dotRingThicknesses[i];
+
+            // Determine the alpha value based on the distance from the dot's center
+            float ringAlpha = step(dotSize - dotThickness, dist) - step(dotSize, dist);
+
+            // Calculate the final opacity for the current dot
+            float currentAlpha = dotRingOpacities[i] * ringAlpha;
+
+            // Update the final color if the current alpha is greater than the previous maximum
+            if (currentAlpha > maxAlpha) {
+                maxAlpha = currentAlpha;
+                finalColor = dotRingColors[i] * currentAlpha;
             }
         }
     }

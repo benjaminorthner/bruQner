@@ -106,8 +106,8 @@ def run_performance(osc_address, *args):
 
         
         animation_manager.trigger_animation("ring", {'color': color_left,
-                                                    'rotationSpeed': 0.5,
-                                                    'armCount': 0,
+                                                    'rotation_speed': 0.5,
+                                                    'arm_count': 0,
                                                     'thickness': thickness,
                                                     'lifetime': lifetime,
                                                     'dynamic': {
@@ -118,8 +118,8 @@ def run_performance(osc_address, *args):
                                                     })
         
         animation_manager.trigger_animation("ring", {'color': color_right,
-                                                      'rotationSpeed': -0.5,
-                                                      'armCount': 0,
+                                                      'rotation_speed': -0.5,
+                                                      'arm_count': 0,
                                                       'thickness': thickness,
                                                       'lifetime': lifetime,
                                                       'dynamic': {
@@ -157,8 +157,8 @@ def run_performance(osc_address, *args):
             color = random.choice([c0, c1, c2, c3])
 
             animation_manager.trigger_animation("ring", {'color': color,
-                                                        'rotationSpeed': 0.5,
-                                                        'armCount': 0,
+                                                        'rotation_speed': 0.5,
+                                                        'arm_count': 0,
                                                         'lifetime': lifetime,
                                                         'delay' : delay_between_rings * i,
                                                         'dynamic': {
@@ -169,8 +169,8 @@ def run_performance(osc_address, *args):
 
                                                         })
             animation_manager.trigger_animation("ring", {'color': color,
-                                                        'rotationSpeed': 0.5,
-                                                        'armCount': 0,
+                                                        'rotation_speed': 0.5,
+                                                        'arm_count': 0,
                                                         'lifetime': lifetime,
                                                         'delay' : delay_between_rings * i,
                                                         'dynamic': {
@@ -229,8 +229,8 @@ def run_performance(osc_address, *args):
             position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
 
             animation_manager.trigger_animation("ring", {'color': color_left,
-                                                        'rotationSpeed': 0.5,
-                                                        'armCount': 0,
+                                                        'rotation_speed': 0.5,
+                                                        'arm_count': 0,
                                                         'thickness': thickness,
                                                         'lifetime': lifetime,
                                                         'dynamic': {
@@ -241,8 +241,8 @@ def run_performance(osc_address, *args):
                                                         })
             
             animation_manager.trigger_animation("ring", {'color': color_right,
-                                                        'rotationSpeed': -0.5,
-                                                        'armCount': 0,
+                                                        'rotation_speed': -0.5,
+                                                        'arm_count': 0,
                                                         'thickness': thickness,
                                                         'lifetime': lifetime,
                                                         'dynamic': {
@@ -292,9 +292,9 @@ def run_performance(osc_address, *args):
         x_position = 0.35
 
         animation_manager.trigger_animation("ring", {'color': color_left,
-                                                    'armCount': 10,
+                                                    'arm_count': 10,
                                                     'thickness': thickness,
-                                                    'rotationSpeed': direction_right * rotation_speed,
+                                                    'rotation_speed': direction_right * rotation_speed,
                                                     'lifetime': lifetime,
                                                     'position': (-x_position, 0),
                                                     'dynamic': {
@@ -304,9 +304,9 @@ def run_performance(osc_address, *args):
                                                     })
 
         animation_manager.trigger_animation("ring", {'color': color_right,
-                                                    'armCount': 10,
+                                                    'arm_count': 10,
                                                     'thickness': thickness,
-                                                    'rotationSpeed': direction_left * rotation_speed,
+                                                    'rotation_speed': direction_left * rotation_speed,
                                                     'lifetime': lifetime,
                                                     'position': (x_position, 0),
                                                     'dynamic': {
@@ -320,22 +320,43 @@ def run_performance(osc_address, *args):
 
     elif animation_manager.current_section == 8:
 
-        size = 0.05
-        thickness = 1
+        dot_size = 0.05
+        dot_thickness = 0.1
         lifetime = 5
         opacity = 1
-        dotCount = 10
-        ringRadius = 1
+        dot_count = 10
+        ring_radius = 0.5
         angle = 0
         animation_manager.trigger_animation("dot_ring", {'color': white,
-                                                        'size': size,
-                                                        'thickness': thickness,
-                                                        'dotCount': dotCount,
-                                                        'ringRadius': ringRadius,
+                                                        'dot_thickness': dot_thickness,
+                                                        'dot_count': dot_count,
                                                         'lifetime': lifetime,
                                                         'dynamic': {
                                                             'opacity': opacity,
-                                                            'position': lambda t: (0, 0),
+                                                            'position': lambda t: (0.35, 0),
                                                             'angle': lambda t: t,
+                                                            'ring_radius': lambda t: 1 ,
+                                                            'dot_size': lambda t: 0.05 + 0.1 * t,
+                                                        }
+                                                        })
+    elif animation_manager.current_section == 9:
+
+        dot_size = 0.05
+        dot_thickness = 0.01
+        lifetime = 5
+        opacity = 1
+        dot_count = 10
+        ring_radius = 0.5
+        angle = 0
+        animation_manager.trigger_animation("dot_ring", {'color': white,
+                                                        'dot_thickness': dot_thickness,
+                                                        'dot_count': dot_count,
+                                                        'lifetime': lifetime,
+                                                        'dynamic': {
+                                                            'opacity': opacity,
+                                                            'position': lambda t: (0.35, 0),
+                                                            'angle': lambda t: t,
+                                                            'ring_radius': lambda t: 1 * t,
+                                                            'dot_size': lambda t: 0.05 + 0.1 * t,
                                                         }
                                                         })
