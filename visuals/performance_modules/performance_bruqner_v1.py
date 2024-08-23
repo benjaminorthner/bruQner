@@ -59,16 +59,20 @@ def run_performance(osc_address, *args):
     c3 = (1.0, w, 1.0) # purple
 
     # Measurement animation for first section
+    # -----------------------------------------
+    # Fadein-Fade out rings, wiggle more over time
+    # -----------------------------------------
     if animation_manager.current_section == 1:
 
         # measurement -> music logic
         # choose color set based on matching or non matching measurements
+        # TODO color choice as discussed
         if alice_measurement == bob_measurement:
             color_left = c0 
-            color_right = c1 
+            color_right = c0 
         else:
-            color_left = c2
-            color_right = c3
+            color_left = c0
+            color_right = c1
 
         # based on exact measurement swap the order of the colors
         if alice_measurement == -1: 
@@ -85,7 +89,7 @@ def run_performance(osc_address, *args):
 
         opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
 
-        initial_size = 0.7
+        initial_size = lambda j: 0.1 + j * 0.2 # TODO add limit in size
         growthSpeed = 0.02
         thickness = 0.08
 
@@ -96,15 +100,15 @@ def run_performance(osc_address, *args):
 
         # add wiggle after a certain number of triggers
         wiggle_amplitude = 0
-        if animation_manager.section_trigger_count > 1:
-            wiggle_amplitude = 0.01 * animation_manager.section_trigger_count
+        if animation_manager.section_trigger_count > 5:
+            wiggle_amplitude = 0.03
 
-        wiggle_frequency = 10
+        wiggle_frequency = 4
 
         position_x = lambda seed, t: initial_x + direction * t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
         position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
 
-        
+        initial_size = initial_size(animation_manager.section_trigger_count)
         animation_manager.trigger_animation("ring", {'color': color_left,
                                                     'rotation_speed': 0.5,
                                                     'arm_count': 0,
@@ -129,9 +133,43 @@ def run_performance(osc_address, *args):
                                                     }
                                                     })
 
+    # -----------------------------------------
+    # 2 persistent rings that grow and shrink 
+    # -----------------------------------------
+    # TODO randomise at each trial
+    # TODO 2 circles
+    # TODO in the beginning, only size, then only thickness, then both
     elif animation_manager.current_section == 2:
-        pass
+        
+        lifetime = 3
 
+        thickness = 0.03
+        t_wiggle_amplitude = 0.7
+        t_wiggle_frequency = 1.2
+        t_wiggle = lambda seed, t: t_wiggle_amplitude * smoothwiggle(t, t_wiggle_frequency, seed)
+
+
+        size = 0.7
+        wiggle_amplitude = 0.1
+        wiggle_frequency = 1.2
+        size_wiggle = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
+
+        animation_manager.trigger_animation("ring", {'color': white,
+                                                      'opacity': 1,
+                                                      'rotation_speed': 0,
+                                                      'arm_count': 0,
+                                                      'lifetime': lifetime,
+                                                      'position': (0,0),
+                                                      'dynamic': {
+                                                        'thickness': lambda t: thickness + t_wiggle(t=t, seed=1)**2,
+                                                        'size': lambda t: size + size_wiggle(t=t, seed=4),  
+                                                    }
+                                                    })
+
+    # -----------------------------------------
+    #  2x4 nested rings growing from inside out per 1 trigger
+    # -----------------------------------------
+    # TODO in the beginning no wiggle. Then use wite in between colors
     elif animation_manager.current_section == 3:
 
         lifetime = 5
@@ -180,6 +218,9 @@ def run_performance(osc_address, *args):
                                                         }
                                                         })
 
+    # -----------------------------------------
+    # Quantum Rings vs Classical Lines
+    # -----------------------------------------
     elif animation_manager.current_section == 4:
 
         # measurement -> music logic
@@ -221,9 +262,9 @@ def run_performance(osc_address, *args):
             # add wiggle after a certain number of triggers
             wiggle_amplitude = 0
             if animation_manager.section_trigger_count > 1:
-                wiggle_amplitude = 0.01 * animation_manager.section_trigger_count
+                wiggle_amplitude = 0.1 
 
-            wiggle_frequency = 10
+            wiggle_frequency = 0
 
             position_x = lambda seed, t: initial_x + direction * t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
             position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
@@ -253,23 +294,39 @@ def run_performance(osc_address, *args):
                                                         })
         # if not quantum show lines
         else:
-
-            thickness = 0.01
+            # 4s
+            # TODO wiggle length, angle, position, size
+            # TODO instant transition between circles and lines (no pause)
+            # TODO special ending with 2 long notes
+            # TODO clemens can send special section end signal
+            # TODO lines grow to fill the screen at the end
+            thickness = 0.02
             animation_manager.trigger_animation("line", {'color': white,
                                                         'thickness': thickness,
                                                         'lifetime': lifetime,
                                                         'dynamic': {
                                                             'opacity': opacity,
-                                                            'angle': lambda t: 1 * t,
-                                                            'length': lambda t: np.sin(t) ** 2,
-                                                            'position': lambda t: (0.5 * np.sin(1.5*t), 0.4 * np.cos(2 * t + 0.1)),
+                                                            'angle': lambda t: 0.5 * np.sin(4*t),
+                                                            'length': lambda t: 0.7 + 0.4 * np.cos(3*t),
+                                                            'position': lambda t: (0, 0),
                                                         }
             })
 
+    # -----------------------------------------
+    # 
+    # -----------------------------------------
+    # TODO test a starry night type animation. slow and dim and in the background
     elif animation_manager.current_section == 5:
         # blank section
         pass
 
+    # -----------------------------------------
+    # 
+    # -----------------------------------------
+    # TODO add variation of arm_count
+    # TODO in the beginning circles the same, later circles change from each other, (different arm counts, rotation directions)
+    # TODO complex timing needs to be done with Clemens
+    # TODO cross disolve between circles
     elif animation_manager.current_section == 6:
 
         color_right = c0 if alice_measurement == 1 else c2
@@ -315,30 +372,64 @@ def run_performance(osc_address, *args):
                                                     }
                                                     })
 
+    # -----------------------------------------
+    # 
+    # -----------------------------------------
     elif animation_manager.current_section == 7:
         pass
 
+    # -----------------------------------------
+    # 
+    # -----------------------------------------
+    # TODO build up to climax in the middle with trigger counting
+    # TODO special ending with morph to line
+    # TODO implement mix of curretn section 8 and 9 animations to make it not boring
     elif animation_manager.current_section == 8:
 
-        dot_size = 0.05
-        dot_thickness = 0.1
         lifetime = 5
-        opacity = 1
-        dot_count = 10
-        ring_radius = 0.5
-        angle = 0
-        animation_manager.trigger_animation("dot_ring", {'color': white,
-                                                        'dot_thickness': dot_thickness,
-                                                        'dot_count': dot_count,
-                                                        'lifetime': lifetime,
-                                                        'dynamic': {
-                                                            'opacity': opacity,
-                                                            'position': lambda t: (0.35, 0),
-                                                            'angle': lambda t: t,
-                                                            'ring_radius': lambda t: 1 ,
-                                                            'dot_size': lambda t: 0.05 + 0.1 * t,
-                                                        }
-                                                        })
+
+        dot_thickness = 0.1
+        dot_count = 13 - animation_manager.section_trigger_count
+
+        rotation_speed = 0.5
+
+        ring_radius = 0.8
+        ring_grow_time = 3
+
+        x_position = 0.35
+
+        max_dot_size = 0.05
+        size_fadein_length = 3
+        size_fadeout_length = 2
+        dot_size = lambda t: max_dot_size * smoothstep(0, size_fadein_length, t) * smoothstep(lifetime, lifetime - size_fadeout_length, t)
+
+        opacity_fadein_length = 2
+        opacity_fadeout_length = 2
+        opacity = lambda t: smoothstep(0, opacity_fadein_length, t) * smoothstep(lifetime, lifetime - opacity_fadeout_length, t)
+
+        # randomly delay one of the rings to create staggered effect
+        delays = [0, random.random()]
+        random.shuffle(delays)
+
+        for x_pos, rot_dir, delay in zip([x_position, -x_position], [1, -1], delays):
+
+            animation_manager.trigger_animation("dot_ring", {'color': eval(random.choice(['c0', 'c1', 'c2', 'c3'])),
+                                                            'dot_thickness': dot_thickness,
+                                                            'dot_count': dot_count,
+                                                            'lifetime': lifetime,
+                                                            'delay': delay,
+                                                            'dynamic': {
+                                                                'opacity': opacity,
+                                                                'position': lambda t, x_pos=x_pos: (x_pos, 0),
+                                                                'angle': lambda t, rot_dir=rot_dir: rot_dir * rotation_speed *  t,
+                                                                'ring_radius': lambda t: ring_radius * smoothstep(0, ring_grow_time, t) ,
+                                                                'dot_size': dot_size,
+                                                            }
+                                                            })
+
+    # -----------------------------------------
+    # 
+    # -----------------------------------------
     elif animation_manager.current_section == 9:
 
         dot_size = 0.05
@@ -357,6 +448,7 @@ def run_performance(osc_address, *args):
                                                             'position': lambda t: (0.35, 0),
                                                             'angle': lambda t: t,
                                                             'ring_radius': lambda t: 1 * t,
-                                                            'dot_size': lambda t: 0.05 + 0.1 * t,
+                                                            'dot_size': lambda t: dot_size + 0.1 * t,
                                                         }
                                                         })
+

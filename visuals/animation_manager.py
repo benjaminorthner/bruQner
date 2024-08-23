@@ -208,7 +208,7 @@ class LineAnimation(Animation):
 class AnimationManager:
     def __init__(self):
         self.animations = []
-        self.current_section = 8 # indexing sections starting from 1
+        self.current_section = 1 # indexing sections starting from 1
         self.total_trigger_count = 0 # counts total number of animations
         self.section_trigger_count = 0 # counts number of animations in current section
         self.is_quantum = 1 # 1 if setup is currenlty producing entangles particles, 0 if state is classical
