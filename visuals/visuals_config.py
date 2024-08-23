@@ -17,3 +17,6 @@ USE_OSC = False
 #MY_IP = "192.168.0.2" # Bruckner Wifi
 MY_IP = "128.131.196.0" # ATI Wifi
 MY_PORT = 7403
+
+# If true then can update code while its running with changes reflected in the next animation
+ENABLE_RUNTIME_UPDATES = True

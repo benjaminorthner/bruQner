@@ -8,7 +8,7 @@ import os
 import importlib
 from pythonosc import dispatcher, osc_server
 
-from visuals_config import PERFORMANCE_MODULE, USE_OSC, RESOLUTION, MY_IP, MY_PORT, MAX_ANIMATIONS
+from visuals_config import PERFORMANCE_MODULE, USE_OSC, RESOLUTION, MY_IP, MY_PORT, MAX_ANIMATIONS, ENABLE_RUNTIME_UPDATES
 
 # Force the use of the NVIDIA GPU
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -320,15 +320,11 @@ def main():
     global animation_manager
     screen = init_pygame_opengl()
 
-    # init shader 
+    # init shader -----------------------------
     shader_path = os.path.join(os.path.dirname(__file__), 'fragment_shader_noverlap.glsl')
     shader_program = create_shader_program(shader_path)
     last_shader_mtime = os.path.getmtime(shader_path)
     glUseProgram(shader_program)
-
-    # setup perforamnce module runtime update monitoring variables
-    performance_module_path = os.path.join(os.path.dirname(__file__), f'performance_modules\\{PERFORMANCE_MODULE}.py')
-    last_performance_mtime  =os.path.getmtime(performance_module_path)
 
     # Define a full-screen quad
     quad_vertices = [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0]
@@ -345,6 +341,11 @@ def main():
     iResolution = glGetUniformLocation(shader_program, "iResolution")
     iTime = glGetUniformLocation(shader_program, "iTime")
     iMouse = glGetUniformLocation(shader_program, "iMouse")
+    # ----------------------------------------
+
+    # setup perforamnce module runtime update monitoring variables
+    performance_module_path = os.path.join(os.path.dirname(__file__), f'performance_modules\\{PERFORMANCE_MODULE}.py')
+    last_performance_mtime  =os.path.getmtime(performance_module_path)
 
     # init the animation manager
     animation_manager = AnimationManager()
@@ -395,30 +396,31 @@ def main():
                 if event.key == K_c and mods & KMOD_CTRL:
                     running = False
 
-        # check for updates in shader file
-        shader_changed, last_shader_mtime = watch_file(shader_path, last_shader_mtime)
-        if shader_changed:
-            new_shader_program, new_iResolution, new_iTime, new_iMouse = setup_shader_program(shader_path)
-            if new_shader_program is not None:
-                # If shader reloaded successfully, update the program and uniform locations
-                glDeleteProgram(shader_program)  # Delete the old program
-                shader_program = new_shader_program
-                iResolution = new_iResolution
-                iTime = new_iTime
-                iMouse = new_iMouse
-            else:
-                print("Shader reload failed. Continuing with the previous version.")
-            # Regardless of success or failure, don't skip the frame
-            continue
-        
-        # check for updates in perforance module
-        performance_changed, last_performance_mtime = watch_file(performance_module_path, last_performance_mtime)
-        if performance_changed:
-            reloaded_performance = load_performance_module(PERFORMANCE_MODULE, reload=True)
-            def run_performance():
-                animation_manager.count_trigger()
-                return reloaded_performance
-            print('----------------------------\nPerformance module reloaded!\n---------------------------')
+        if ENABLE_RUNTIME_UPDATES:
+            # check for updates in shader file
+            shader_changed, last_shader_mtime = watch_file(shader_path, last_shader_mtime)
+            if shader_changed:
+                new_shader_program, new_iResolution, new_iTime, new_iMouse = setup_shader_program(shader_path)
+                if new_shader_program is not None:
+                    # If shader reloaded successfully, update the program and uniform locations
+                    glDeleteProgram(shader_program)  # Delete the old program
+                    shader_program = new_shader_program
+                    iResolution = new_iResolution
+                    iTime = new_iTime
+                    iMouse = new_iMouse
+                else:
+                    print("Shader reload failed. Continuing with the previous version.")
+                # Regardless of success or failure, don't skip the frame
+                continue
+            
+            # check for updates in performance module
+            performance_changed, last_performance_mtime = watch_file(performance_module_path, last_performance_mtime)
+            if performance_changed:
+                reloaded_performance = load_performance_module(PERFORMANCE_MODULE, reload=True)
+                def run_performance():
+                    animation_manager.count_trigger()
+                    return reloaded_performance
+                print('----------------------------\nPerformance module reloaded!\n---------------------------')
 
         glClear(GL_COLOR_BUFFER_BIT)
         current_time = pygame.time.get_ticks() / 1000.0
