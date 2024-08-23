@@ -321,7 +321,7 @@ def main():
     screen = init_pygame_opengl()
 
     # init shader -----------------------------
-    shader_path = os.path.join(os.path.dirname(__file__), 'fragment_shader_noverlap.glsl')
+    shader_path = os.path.join(os.path.dirname(__file__), 'fragment_shader.glsl')
     shader_program = create_shader_program(shader_path)
     last_shader_mtime = os.path.getmtime(shader_path)
     glUseProgram(shader_program)
