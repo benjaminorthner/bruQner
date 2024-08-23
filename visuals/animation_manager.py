@@ -16,9 +16,21 @@ os.environ["QT_OPENGL"] = "angle"  # Use ANGLE OpenGL for PyQt applications
 
 
 # load the code for the current performance
-def load_performance_module(module_name):
+def load_performance_module(module_name, reload=False):
     module = importlib.import_module(f'performance_modules.{module_name}')
+    # if reload flag is used
+    if reload: 
+        module = importlib.reload(module)
+
     return module.run_performance
+
+
+# detect changes in a file (for updating shader and performance module at runtime)
+def watch_file(path, last_mtime):
+    current_mtime = os.path.getmtime(path)
+    if current_mtime != last_mtime:
+        return True, current_mtime
+    return False, last_mtime
 
 # Pygame and OpenGL setup
 def init_pygame_opengl():
@@ -40,9 +52,9 @@ def init_pygame_opengl():
     glClearColor(0.0, 0.0, 0.0, 1.0)
     return screen
 
-def create_shader_program():
+def create_shader_program(shader_path):
     # import GLSL fragment shader source code
-    with open(os.path.join(os.path.dirname(__file__), 'fragment_shader_noverlap.glsl'), 'r') as file:
+    with open(shader_path, 'r') as file:
         fragment_shader_code = file.read()
 
     # Add the MAX_ANIMATIONS value to the shader code
@@ -61,6 +73,26 @@ def create_shader_program():
     fragment_shader = compileShader(fragment_shader_code, GL_FRAGMENT_SHADER)
     shader_program = compileProgram(vertex_shader, fragment_shader)
     return shader_program
+
+def setup_shader_program(shader_path):
+    try:
+        new_shader_program = create_shader_program(shader_path)
+        glUseProgram(new_shader_program)
+        
+        # Re-setup the attribute locations and uniforms
+        position = glGetAttribLocation(new_shader_program, "position")
+        glEnableVertexAttribArray(position)
+        glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, None)
+
+        iResolution = glGetUniformLocation(new_shader_program, "iResolution")
+        iTime = glGetUniformLocation(new_shader_program, "iTime")
+        iMouse = glGetUniformLocation(new_shader_program, "iMouse")
+        
+        print('------------\nShader reloaded successfully!\n------------')
+        return new_shader_program, iResolution, iTime, iMouse
+    except Exception as e:
+        print(f"Error reloading shader: {e}")
+        return None, None, None, None
 
 # Animation classes
 class Animation:
@@ -284,10 +316,19 @@ def start_osc_server(run_performance, animation_manager):
 
 # Main loop
 def main():
+    # init pygame
     global animation_manager
     screen = init_pygame_opengl()
-    shader_program = create_shader_program()
+
+    # init shader 
+    shader_path = os.path.join(os.path.dirname(__file__), 'fragment_shader_noverlap.glsl')
+    shader_program = create_shader_program(shader_path)
+    last_shader_mtime = os.path.getmtime(shader_path)
     glUseProgram(shader_program)
+
+    # setup perforamnce module runtime update monitoring variables
+    performance_module_path = os.path.join(os.path.dirname(__file__), f'performance_modules\\{PERFORMANCE_MODULE}.py')
+    last_performance_mtime  =os.path.getmtime(performance_module_path)
 
     # Define a full-screen quad
     quad_vertices = [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0]
@@ -353,6 +394,31 @@ def main():
                 mods = pygame.key.get_mods()
                 if event.key == K_c and mods & KMOD_CTRL:
                     running = False
+
+        # check for updates in shader file
+        shader_changed, last_shader_mtime = watch_file(shader_path, last_shader_mtime)
+        if shader_changed:
+            new_shader_program, new_iResolution, new_iTime, new_iMouse = setup_shader_program(shader_path)
+            if new_shader_program is not None:
+                # If shader reloaded successfully, update the program and uniform locations
+                glDeleteProgram(shader_program)  # Delete the old program
+                shader_program = new_shader_program
+                iResolution = new_iResolution
+                iTime = new_iTime
+                iMouse = new_iMouse
+            else:
+                print("Shader reload failed. Continuing with the previous version.")
+            # Regardless of success or failure, don't skip the frame
+            continue
+        
+        # check for updates in perforance module
+        performance_changed, last_performance_mtime = watch_file(performance_module_path, last_performance_mtime)
+        if performance_changed:
+            reloaded_performance = load_performance_module(PERFORMANCE_MODULE, reload=True)
+            def run_performance():
+                animation_manager.count_trigger()
+                return reloaded_performance
+            print('----------------------------\nPerformance module reloaded!\n---------------------------')
 
         glClear(GL_COLOR_BUFFER_BIT)
         current_time = pygame.time.get_ticks() / 1000.0
