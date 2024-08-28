@@ -58,7 +58,7 @@ class TimeTaggerController:
         trace_labels = []
         for i, ch in enumerate(channels):
             
-            # if channel names not note, set either assigned channel name, or otherwise just the unassigned number
+            # if channel names not none, set either assigned channel name, or otherwise just the unassigned number
             if channel_names is None:
                 label = next((key for key, value in self.assigned_channels.items() if value == ch), f"unassigned channel {ch}")
             else:
@@ -70,7 +70,7 @@ class TimeTaggerController:
         fig = go.FigureWidget()
             
         # add scatter for each virtual channel
-        for trace, label in zip(traces, trace_labels):
+        for i, (trace, label) in enumerate(zip(traces, trace_labels)):
             fig.add_scatter(x=trace.getIndex(), y=trace.getData()[0], name=f"{label}", line=dict(width=trace_width))
 
         fig.update_layout(
@@ -141,7 +141,7 @@ class TimeTaggerController:
         #    delattr(self, 'coincidences_vchannels')
         #    self.coincidences_vchannels = None
 
-    def _getDelays(self, referenceChannel, adjustmentChannels):
+    def _getDelays(self, referenceChannel, adjustmentChannels, integration_time):
 
         # Create SynchronizedMeasurements to operate on the same time tags.
         sm = TimeTagger.SynchronizedMeasurements(self.tagger)
@@ -157,8 +157,8 @@ class TimeTaggerController:
         self.KMC.rotate_simulataneously(22.5, 0)
         sleep(1)
 
-        # Start measurements and accumulate data for 2 second
-        sm.startFor(int(2e12), clear=True)
+        # Start measurements and accumulate data for integration time seconds
+        sm.startFor(int(integration_time*1e12), clear=True)
         sm.waitUntilFinished()
 
         # Determine delays
@@ -172,20 +172,26 @@ class TimeTaggerController:
 
         return delays
 
-    def performDelayAdjustment(self, set=True):
+    def _print_delays(self, C):
+        for name, c in zip(['Alice_T', 'Alice_R', 'Bob_T', 'Bob_R'], C):
+            print(f"{name:<8}: {c:>5} ps \t/ {c * 0.3:>7.1f} mm")
+
+    def performDelayAdjustment(self, integration_time=2, set=True):
         """
-        Set alice and bob angles so that all 4 coincidence channels are showing non zero coincidences
-        NOTE: have to perform two rounds of delay adjustments because can not just choose one reference since channels in same arm never see coincidences
+        Returns delay in ps
+        integration_time is to be given in s 
+
+        Allows for multiple calls and makes an update to the adjustment instead of starting over
         """
 
         alice_channels = [ self.assigned_channels['Alice_T'], self.assigned_channels['Alice_R']]
         bob_channels = [ self.assigned_channels['Bob_T'], self.assigned_channels['Bob_R']]
 
-        Tdelays = self._getDelays(self.assigned_channels['Alice_T'], bob_channels)
-        Rdelays = self._getDelays(self.assigned_channels['Alice_R'], bob_channels)
+        Tdelays = self._getDelays(self.assigned_channels['Alice_T'], bob_channels, integration_time=integration_time)
+        Rdelays = self._getDelays(self.assigned_channels['Alice_R'], bob_channels, integration_time=integration_time)
 
-        print(Tdelays)
-        print(Rdelays)
+        # print(Tdelays)
+        # print(Rdelays)
 
         C_AT = 0 # reference
         C_BT = -Tdelays[0] # -D_TT
@@ -193,15 +199,27 @@ class TimeTaggerController:
         C_AR =  Rdelays[0] - Tdelays[0] # D_RT - D_TT
 
         C = [C_AT, C_AR, C_BT, C_BR]
-        print(C)
+
+
         #Compensate the delays to align the signals
         if set:
+            
+            print("Delays Before Correction")
+            self._print_delays(C)
+
             for ch, dt in zip([*alice_channels, *bob_channels], C):
                 currentDelay = self.tagger.getInputDelay(ch)
                 newDelay = int(currentDelay - dt)
                 self.tagger.setInputDelay(ch, newDelay)
-        
+
+            # measure delays again to see new delays 
+            C_new = self.performDelayAdjustment(set=False)
+            print("\nDelays After Correction")
+            self._print_delays(C_new)
+
         self.KMC.home()
+
+        return C
 
     def createCoincidenceChannels(self, coincidence_window_SI):
         """

@@ -18,7 +18,7 @@ def smoothstep(edge0, edge1, x):
 def mix(a, b, t):
     return a * (1 - t) + b * t
 
-def smoothwiggle(t, frequency, seed=random.randint(0, 1e16), octaves=1):
+def smoothwiggle(t, frequency, seed=random.randint(0, int(1e16)), octaves=1):
 
     wiggle = 0
     for octave in range(1, octaves + 1):
