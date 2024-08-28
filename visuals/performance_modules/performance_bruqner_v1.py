@@ -2,6 +2,8 @@ import random
 import numpy as np
 import math
 
+# PAPER IDEA: Show each section with property time graphs, can show vertical trigger lines
+
 # FUNCTIONS FOR WIGGLE
 # based on https://www.shadertoy.com/view/7ss3RX
 def R(v):
@@ -39,6 +41,7 @@ def run_performance(osc_address, *args):
 
     # Phone triggers only snd a single number. So 2 args (animation manager + 1 number). Generate a random state for those
     if len(args) == 2:
+        random.seed(None)
         args = [random.choice([1,2]), random.choice([1,2]), random.choice([-1,1]), random.choice([-1,1])]
 
     # process measurement
@@ -58,29 +61,31 @@ def run_performance(osc_address, *args):
     c2 = (1.0, 1.0, w) # yellow
     c3 = (1.0, w, 1.0) # purple
 
+    # Determine the group of colors based on the basis values
+    if alice_basis == bob_basis:
+        color_group = [c0, c1]
+    else:
+        color_group = [c2, c3]
+    
+    # Same measurement (i.e. polarisation) -> same color
+    # choice of color depends on alice measurement
+    if alice_measurement == bob_measurement:
+        alice_color = color_group[0] if alice_measurement == 1 else color_group[1]
+        bob_color = alice_color  # Same color for same measurement
+    else:
+        alice_color = color_group[0] if alice_measurement == 1 else color_group[1]
+        bob_color = color_group[1] if alice_measurement == 1 else color_group[0]  
+
+
     # Measurement animation for first section
     # -----------------------------------------
     # Fadein-Fade out rings, wiggle more over time
     # -----------------------------------------
+    # TODO wiggle starts when, ends when?
     if animation_manager.current_section == 1:
-
-        # measurement -> music logic
-        # choose color set based on matching or non matching measurements
-        # TODO color choice as discussed
-        if alice_measurement == bob_measurement:
-            color_left = c0 
-            color_right = c0 
-        else:
-            color_left = c0
-            color_right = c1
-
-        # based on exact measurement swap the order of the colors
-        if alice_measurement == -1: 
-            color_left, color_right = color_right, color_left
 
         # circles move away from each other if basis the same, otherwise towards each other
         direction = 1 if alice_basis == bob_basis else -1
-
 
         # parameters
         lifetime = 5.5
@@ -89,18 +94,18 @@ def run_performance(osc_address, *args):
 
         opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
 
-        initial_size = lambda j: 0.1 + j * 0.2 # TODO add limit in size
+        initial_size = 0.3 + 0.5 * smoothstep(0, 5, animation_manager.section_trigger_count)
         growthSpeed = 0.02
         thickness = 0.08
 
         x_speed = 0.08
         # initial x depends on direction
-        nearest_x = 0.25
+        nearest_x = initial_size * 0.3
         initial_x = nearest_x + (0 if direction == 1 else x_speed*lifetime)
 
         # add wiggle after a certain number of triggers
         wiggle_amplitude = 0
-        if animation_manager.section_trigger_count > 5:
+        if 5 <= animation_manager.section_trigger_count < 10:
             wiggle_amplitude = 0.03
 
         wiggle_frequency = 4
@@ -108,8 +113,7 @@ def run_performance(osc_address, *args):
         position_x = lambda seed, t: initial_x + direction * t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
         position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
 
-        initial_size = initial_size(animation_manager.section_trigger_count)
-        animation_manager.trigger_animation("ring", {'color': color_left,
+        animation_manager.trigger_animation("ring", {'color': alice_color,
                                                     'rotation_speed': 0.5,
                                                     'arm_count': 0,
                                                     'thickness': thickness,
@@ -121,7 +125,7 @@ def run_performance(osc_address, *args):
                                                     }
                                                     })
         
-        animation_manager.trigger_animation("ring", {'color': color_right,
+        animation_manager.trigger_animation("ring", {'color': bob_color,
                                                       'rotation_speed': -0.5,
                                                       'arm_count': 0,
                                                       'thickness': thickness,
@@ -136,33 +140,93 @@ def run_performance(osc_address, *args):
     # -----------------------------------------
     # 2 persistent rings that grow and shrink 
     # -----------------------------------------
-    # TODO randomise at each trial
-    # TODO 2 circles
-    # TODO in the beginning, only size, then only thickness, then both
+    # TODO colors 
+    # TODO measurement effects
     elif animation_manager.current_section == 2:
         
         lifetime = 3
 
+        # wiggle_opacity will make sure that wiggles go away at beginning and end of lifetime, to make seamless transitions
+        fadeout_length = 0.2
+        fadein_length = 0.2
+        wiggle_opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
+
         thickness = 0.03
-        t_wiggle_amplitude = 0.7
-        t_wiggle_frequency = 1.2
+        t_wiggle_amplitude = 0.3
+        t_wiggle_frequency = 1.5 # has to be this way for consecutive triggers to line up
         t_wiggle = lambda seed, t: t_wiggle_amplitude * smoothwiggle(t, t_wiggle_frequency, seed)
 
 
         size = 0.7
         wiggle_amplitude = 0.1
-        wiggle_frequency = 1.2
+        wiggle_frequency = 1.6
         size_wiggle = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
 
-        animation_manager.trigger_animation("ring", {'color': white,
+        initial_x = 0.5
+
+        def size_choice(wiggle:bool, seed=None):
+            if not seed:
+                seed = random.randint(0, 100)
+            
+            if wiggle:
+                return lambda t : size + wiggle_opacity(t) * size_wiggle(t=t, seed=seed)
+            return size
+
+        def thickness_choice(wiggle:bool, seed=None):
+            if not seed:
+                seed = random.randint(0, 100)
+
+            if wiggle:
+                return lambda t : thickness + wiggle_opacity(t) * abs(t_wiggle(t=t, seed=seed))
+            return thickness
+        
+        size_left, size_right = size, size
+        thickness_left, thickness_right = thickness, thickness
+
+        # only size wiggle, same left and rigth
+        if animation_manager.section_trigger_count <= 4:
+            seed = random.randint(0, 100)
+            size_left, size_right = size_choice(wiggle=True, seed=seed), size_choice(wiggle=True, seed=seed)
+
+        # only thickness wiggle, same left and right
+        elif 4 < animation_manager.section_trigger_count <= 8:
+            seed = random.randint(0, 100)
+            thickness_left, thickness_right = thickness_choice(wiggle=True, seed=seed), thickness_choice(wiggle=True, seed=seed)
+
+        # only size but different left and right
+        elif 8 < animation_manager.section_trigger_count <= 10:
+            size_left, size_right = size_choice(wiggle=True), size_choice(wiggle=True)
+        
+        # only thickness but different left and right
+        elif 10 < animation_manager.section_trigger_count <= 12:
+            thickness_left, thickness_right = thickness_choice(wiggle=True), thickness_choice(wiggle=True)
+        
+        # Full random
+        else:
+            size_left, size_right = size_choice(wiggle=True), size_choice(wiggle=True)
+            thickness_left, thickness_right = thickness_choice(wiggle=True), thickness_choice(wiggle=True)
+
+        animation_manager.trigger_animation("ring", {'color': alice_color,
                                                       'opacity': 1,
                                                       'rotation_speed': 0,
                                                       'arm_count': 0,
                                                       'lifetime': lifetime,
-                                                      'position': (0,0),
+                                                      'position': (initial_x,0),
                                                       'dynamic': {
-                                                        'thickness': lambda t: thickness + t_wiggle(t=t, seed=1)**2,
-                                                        'size': lambda t: size + size_wiggle(t=t, seed=4),  
+                                                        'thickness': thickness_right ,
+                                                        'size': size_right,  
+                                                    }
+                                                    })
+
+        animation_manager.trigger_animation("ring", {'color': bob_color,
+                                                      'opacity': 1,
+                                                      'rotation_speed': 0,
+                                                      'arm_count': 0,
+                                                      'lifetime': lifetime,
+                                                      'position': (- initial_x,0),
+                                                      'dynamic': {
+                                                        'thickness': thickness_left,
+                                                        'size': size_left, 
                                                     }
                                                     })
 
@@ -223,19 +287,6 @@ def run_performance(osc_address, *args):
     # -----------------------------------------
     elif animation_manager.current_section == 4:
 
-        # measurement -> music logic
-        # choose color set based on matching or non matching measurements
-        if alice_measurement == bob_measurement:
-            color_left = c0 
-            color_right = c1 
-        else:
-            color_left = c2
-            color_right = c3
-
-        # based on exact measurement swap the order of the colors
-        if alice_measurement == -1: 
-            color_left, color_right = color_right, color_left
-
         # circles move away from each other if basis the same, otherwise towards each other
         direction = 1 if alice_basis == bob_basis else -1
 
@@ -269,7 +320,7 @@ def run_performance(osc_address, *args):
             position_x = lambda seed, t: initial_x + direction * t * x_speed + wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
             position_y = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
 
-            animation_manager.trigger_animation("ring", {'color': color_left,
+            animation_manager.trigger_animation("ring", {'color': alice_color,
                                                         'rotation_speed': 0.5,
                                                         'arm_count': 0,
                                                         'thickness': thickness,
@@ -281,7 +332,7 @@ def run_performance(osc_address, *args):
                                                         }
                                                         })
             
-            animation_manager.trigger_animation("ring", {'color': color_right,
+            animation_manager.trigger_animation("ring", {'color': bob_color,
                                                         'rotation_speed': -0.5,
                                                         'arm_count': 0,
                                                         'thickness': thickness,
@@ -319,7 +370,6 @@ def run_performance(osc_address, *args):
     elif animation_manager.current_section == 5:
         # blank section
         pass
-
     # -----------------------------------------
     # 
     # -----------------------------------------
@@ -329,8 +379,6 @@ def run_performance(osc_address, *args):
     # TODO cross disolve between circles
     elif animation_manager.current_section == 6:
 
-        color_right = c0 if alice_measurement == 1 else c2
-        color_left = c1 if bob_measurement == 1 else c0
 
         direction_right = 1 if alice_basis == 1 else -1
         direction_left = 1 if bob_basis == 1 else -1
@@ -348,7 +396,7 @@ def run_performance(osc_address, *args):
 
         x_position = 0.35
 
-        animation_manager.trigger_animation("ring", {'color': color_left,
+        animation_manager.trigger_animation("ring", {'color': alice_color,
                                                     'arm_count': 10,
                                                     'thickness': thickness,
                                                     'rotation_speed': direction_right * rotation_speed,
@@ -360,7 +408,7 @@ def run_performance(osc_address, *args):
                                                     }
                                                     })
 
-        animation_manager.trigger_animation("ring", {'color': color_right,
+        animation_manager.trigger_animation("ring", {'color': bob_color,
                                                     'arm_count': 10,
                                                     'thickness': thickness,
                                                     'rotation_speed': direction_left * rotation_speed,
