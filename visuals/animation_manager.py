@@ -6,6 +6,7 @@ import numpy
 import threading
 import os
 import importlib
+import random
 from pythonosc import dispatcher, osc_server
 
 from visuals_config import PERFORMANCE_MODULE, USE_OSC, RESOLUTION, MY_IP, MY_PORT, MAX_ANIMATIONS, ENABLE_RUNTIME_UPDATES
@@ -244,6 +245,7 @@ class AnimationManager:
         self.total_trigger_count = 0 # counts total number of animations
         self.section_trigger_count = 0 # counts number of animations in current section
         self.is_quantum = 1 # 1 if setup is currenlty producing entangles particles, 0 if state is classical
+        self.current_motif_set = 1 # each section has a variety of motif sets. The number differs but its at least 1
 
     def trigger_animation(self, animation_type, parameters=None):
         current_time = pygame.time.get_ticks() / 1000.0
@@ -283,6 +285,23 @@ class AnimationManager:
 
     def set_quantum_classical(self, is_quantum:int):
         self.is_quantum = is_quantum
+    
+    def get_random_state(self, full_random_no_control=False, max_section=None):
+
+        alice = random.choice([1,2,3,4])
+        bob = random.choice([1,2,3,4])
+        section = self.current_section
+        qc_state = 'Q' if self.is_quantum == 1 else 'C' 
+        motif_set = self.current_motif_set
+
+        # produces fullly random state that does not let section and is_quantum be keyboard controlled (simulates real signal from clemens)
+        if full_random_no_control:
+            assert max_section != None 
+
+            section = random.choice([i+1 for i in range(max_section)])
+            qc_state = random.choice(['Q', 'C'])
+        
+        return [section, alice, bob, qc_state, motif_set]
 
 # OSC handler functions
 def change_section_handler(unused_addr, *args):
@@ -299,7 +318,15 @@ def clear_visuals_handler(unused_addr, *args):
     animation_manager.clear_all_animations()
 
 def measurement_handler(unused_addr, *args):
-    #print(args)
+
+    # check if a section change has occured (first argument)
+    if args[0] != animation_manager.current_section:
+        animation_manager.update_section(args[0])
+
+    # check if a change from quantum to classical has occured
+    if args[3] != ('Q' if animation_manager.is_quantum == 1 else 'C'):
+        animation_manager.set_quantum_classical(1 if args[3] == 'Q' else 0)
+
     run_performance()('', [animation_manager], args)
 
 def default_handler(addr, *args):
@@ -379,7 +406,8 @@ def main():
 
                 # manually trigger random measurement with 'r' key
                 if event.key == K_r:
-                    run_performance()('', [animation_manager], 0)
+                    random_state = animation_manager.get_random_state()
+                    run_performance()('', [animation_manager], random_state)
 
                 elif event.key == K_x:
                     clear_visuals_handler('')
