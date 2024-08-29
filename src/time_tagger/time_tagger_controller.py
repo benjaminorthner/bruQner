@@ -176,16 +176,25 @@ class TimeTaggerController:
         for name, c in zip(['Alice_T', 'Alice_R', 'Bob_T', 'Bob_R'], C):
             print(f"{name:<8}: {c:>5} ps \t/ {c * 0.3:>7.1f} mm")
 
-    def performDelayAdjustment(self, integration_time=2, set=True):
+    def performDelayAdjustment(self, integration_time=2, set=True, manual_delays=None):
         """
         Returns delay in ps
         integration_time is to be given in s 
 
         Allows for multiple calls and makes an update to the adjustment instead of starting over
+
+        if manual delays are given (list of 4 numbers in pico seconds), then no delay adjustment will be performed
         """
+
 
         alice_channels = [ self.assigned_channels['Alice_T'], self.assigned_channels['Alice_R']]
         bob_channels = [ self.assigned_channels['Bob_T'], self.assigned_channels['Bob_R']]
+        
+        # if manual delays given, set them and return
+        if manual_delays is not None and set:
+            for ch, delay in zip([*alice_channels, *bob_channels], C):
+                self.tagger.setInputDelay(ch, delay)
+            return None
 
         Tdelays = self._getDelays(self.assigned_channels['Alice_T'], bob_channels, integration_time=integration_time)
         Rdelays = self._getDelays(self.assigned_channels['Alice_R'], bob_channels, integration_time=integration_time)
@@ -213,7 +222,7 @@ class TimeTaggerController:
                 self.tagger.setInputDelay(ch, newDelay)
 
             # measure delays again to see new delays 
-            C_new = self.performDelayAdjustment(set=False)
+            C_new = self.performDelayAdjustment(integration_time=integration_time / 3, set=False)
             print("\nDelays After Correction")
             self._print_delays(C_new)
 
