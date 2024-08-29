@@ -245,8 +245,11 @@ def run_performance(osc_address, *args):
         growthSpeed = 0.22
         x_position = 0.35
 
-        wiggle_amplitude = 0.05
         wiggle_frequency = 2.3
+        wiggle_amplitude = 0 
+        if animation_manager.section_trigger_count > 3:
+            wiggle_amplitude = 0.05
+
         x_wiggle = lambda t, seed: wiggle_amplitude * smoothstep(lifetime, 0, t) * smoothwiggle(t, frequency=wiggle_frequency, seed=seed, octaves=1)
         y_wiggle = lambda t, seed: wiggle_amplitude * smoothstep(lifetime, 0, t) * smoothwiggle(t, frequency=wiggle_frequency, seed=seed, octaves=1)
 
@@ -256,9 +259,10 @@ def run_performance(osc_address, *args):
         # make set of rings for each trigger
         for i in range(rings_per_trigger):
             
-            color = random.choice([c0, c1, c2, c3])
+            color_1 = alice_color if i % 2 == 0 else white
+            color_2 = bob_color if i % 2 == 0 else white            
 
-            animation_manager.trigger_animation("ring", {'color': color,
+            animation_manager.trigger_animation("ring", {'color': color_1,
                                                         'rotation_speed': 0.5,
                                                         'arm_count': 0,
                                                         'lifetime': lifetime,
@@ -270,7 +274,7 @@ def run_performance(osc_address, *args):
                                                         }
 
                                                         })
-            animation_manager.trigger_animation("ring", {'color': color,
+            animation_manager.trigger_animation("ring", {'color': color_2,
                                                         'rotation_speed': 0.5,
                                                         'arm_count': 0,
                                                         'lifetime': lifetime,
