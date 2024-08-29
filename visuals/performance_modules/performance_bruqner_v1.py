@@ -194,11 +194,11 @@ def run_performance(osc_address, *args):
             thickness_left, thickness_right = thickness_choice(wiggle=True, seed=seed), thickness_choice(wiggle=True, seed=seed)
 
         # only size but different left and right
-        elif 8 < animation_manager.section_trigger_count <= 10:
+        elif 8 < animation_manager.section_trigger_count <= 12:
             size_left, size_right = size_choice(wiggle=True), size_choice(wiggle=True)
         
         # only thickness but different left and right
-        elif 10 < animation_manager.section_trigger_count <= 12:
+        elif 12 < animation_manager.section_trigger_count <= 16:
             thickness_left, thickness_right = thickness_choice(wiggle=True), thickness_choice(wiggle=True)
         
         # Full random
@@ -383,6 +383,9 @@ def run_performance(osc_address, *args):
         direction_right = 1 if alice_basis == 1 else -1
         direction_left = 1 if bob_basis == 1 else -1
         rotation_speed = 1
+        
+        alice_arms = 10 if alice_measurement == 1 else 5
+        bob_arms = 10 if bob_measurement == 1 else 5
 
         lifetime = 5
         fadeout_length = 0.5
@@ -393,11 +396,12 @@ def run_performance(osc_address, *args):
         thickness = 0.05
         size = lambda t: initial_size - 2.5 * smoothstep(0, fadein_length, t) - 0.06*t
 
-
         x_position = 0.35
 
+
+
         animation_manager.trigger_animation("ring", {'color': alice_color,
-                                                    'arm_count': 10,
+                                                    'arm_count': alice_arms,
                                                     'thickness': thickness,
                                                     'rotation_speed': direction_right * rotation_speed,
                                                     'lifetime': lifetime,
@@ -409,7 +413,7 @@ def run_performance(osc_address, *args):
                                                     })
 
         animation_manager.trigger_animation("ring", {'color': bob_color,
-                                                    'arm_count': 10,
+                                                    'arm_count': bob_arms,
                                                     'thickness': thickness,
                                                     'rotation_speed': direction_left * rotation_speed,
                                                     'lifetime': lifetime,
