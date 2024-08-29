@@ -40,9 +40,18 @@ def run_performance(osc_address, *args):
     animation_manager = args[0][0]
 
     # Phone triggers only snd a single number. So 2 args (animation manager + 1 number). Generate a random state for those
-    if len(args) == 2:
+    if len(args[1]) < 2:
         random.seed(None)
-        args = [random.choice([1,2]), random.choice([1,2]), random.choice([-1,1]), random.choice([-1,1])]
+        args = [animation_manager.current_section, random.choice([1,2,3,4]), random.choice([1,2,3,4]), 'Q', 1]
+
+    args = args[1]
+
+    animation_manager.current_section = args[0]
+
+    alice_basis = 1 if args[1] <= 2 else 0
+    bob_basis = 1 if args[2] <= 2 else 0
+    alice_measurement = 1 if args[1] % 2 == 0 else -1
+    bob_measurement = 1 if args[2] % 2 == 0 else -1
 
     # process measurement
     alice_basis = args[0]

@@ -298,12 +298,17 @@ def quantum_classical_handler(unused_addr, *args):
 def clear_visuals_handler(unused_addr, *args):
     animation_manager.clear_all_animations()
 
+def measurement_handler(unused_addr, *args):
+    #print(args)
+    run_performance()('', [animation_manager], args)
+
 def default_handler(addr, *args):
     print(f"Received OSC message: {addr} with arguments {args}")
 
 def start_osc_server(run_performance, animation_manager):
     disp = dispatcher.Dispatcher()
     disp.map("/bruQner/visuals/ring", run_performance, animation_manager)
+    disp.map("/bruQner/graphics/", measurement_handler)
     disp.map("/bruQner/visuals/change_section", change_section_handler)
     disp.map("/bruQner/visuals/is_quantum", quantum_classical_handler)
     disp.map("/bruQner/visuals/clear", clear_visuals_handler)
@@ -316,8 +321,10 @@ def start_osc_server(run_performance, animation_manager):
 
 # Main loop
 def main():
-    # init pygame
     global animation_manager
+    global run_performance
+
+    # init pygame
     screen = init_pygame_opengl()
 
     # init shader -----------------------------
