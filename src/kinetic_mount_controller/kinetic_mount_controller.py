@@ -102,7 +102,7 @@ class KineticMountControl:
         thread.start()
         thread.join()
 
-    def rotate_simulataneously(self, alice_angle, bob_angle):
+    def rotate_simulataneously(self, alice_angle, bob_angle, wait_for_completion=True):
         """
         Uses multithreading to rotate bob and alice simultaneously
         """
@@ -114,8 +114,9 @@ class KineticMountControl:
         thread_b.start()
 
         # Wait for both threads to complete
-        thread_a.join()
-        thread_b.join()
+        if wait_for_completion:
+            thread_a.join()
+            thread_b.join()
 
 
 

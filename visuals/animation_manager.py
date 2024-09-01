@@ -318,7 +318,7 @@ def clear_visuals_handler(unused_addr, *args):
     animation_manager.clear_all_animations()
 
 def measurement_handler(unused_addr, *args):
-
+    print(args)
     # check if a section change has occured (first argument)
     if args[0] != animation_manager.current_section:
         animation_manager.update_section(args[0])
@@ -329,12 +329,18 @@ def measurement_handler(unused_addr, *args):
 
     run_performance()('', [animation_manager], args)
 
+# handle visual triggers from phone and other manual triggers
+def manual_trigger_handler(addr, *args):
+    print("Manual Trigger Received")
+    run_performance()('', [animation_manager], animation_manager.get_random_state())
+
 def default_handler(addr, *args):
     print(f"Received OSC message: {addr} with arguments {args}")
 
 def start_osc_server(run_performance, animation_manager):
     disp = dispatcher.Dispatcher()
     disp.map("/bruQner/visuals/ring", run_performance, animation_manager)
+    disp.map("/bruQner/visuals/manual", manual_trigger_handler)
     disp.map("/bruQner/graphics/", measurement_handler)
     disp.map("/bruQner/visuals/change_section", change_section_handler)
     disp.map("/bruQner/visuals/is_quantum", quantum_classical_handler)
