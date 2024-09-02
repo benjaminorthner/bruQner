@@ -38,26 +38,17 @@ def run_performance(osc_address, *args):
 
     # extract the animation manager from args
     animation_manager = args[0][0]
+    state = args[1] # Format [section, alice state (1,4), bob state (1,4), Q/C, note set]
 
-    # Phone triggers only snd a single number. So 2 args (animation manager + 1 number). Generate a random state for those
-    if len(args[1]) < 2:
-        random.seed(None)
-        args = [animation_manager.current_section, random.choice([1,2,3,4]), random.choice([1,2,3,4]), 'Q', 1]
+    # For random states current section controlled by keybaord
+    # For real experiment data current section is part of data and overrides keyboard
+    animation_manager.current_section = state[0]
+    animation_manager.is_quantum = 1 if state[3] == "Q" else 0
 
-    args = args[1]
-
-    animation_manager.current_section = args[0]
-
-    alice_basis = 1 if args[1] <= 2 else 0
-    bob_basis = 1 if args[2] <= 2 else 0
-    alice_measurement = 1 if args[1] % 2 == 0 else -1
-    bob_measurement = 1 if args[2] % 2 == 0 else -1
-
-    # process measurement
-    alice_basis = args[0]
-    bob_basis = args[1]
-    alice_measurement = args[2]
-    bob_measurement = args[3]
+    alice_basis = 1 if state[1] <= 2 else 0
+    bob_basis = 1 if state[2] <= 2 else 0
+    alice_measurement = 1 if state[1] % 2 == 0 else 0
+    bob_measurement = 1 if state[2] % 2 == 0 else 0
 
     white = (1,1,1)
     red = (1,0.1,0.1)
@@ -97,7 +88,7 @@ def run_performance(osc_address, *args):
         direction = 1 if alice_basis == bob_basis else -1
 
         # parameters
-        lifetime = 5.5
+        lifetime = 5.3
         fadeout_length = 0.5
         fadein_length = 0.3
 
@@ -245,7 +236,7 @@ def run_performance(osc_address, *args):
     # TODO in the beginning no wiggle. Then use wite in between colors
     elif animation_manager.current_section == 3:
 
-        lifetime = 5
+        lifetime = 4.8
         fadeout_length = 0.5
         fadein_length = 2
         initial_thickness = 0.3
@@ -254,8 +245,11 @@ def run_performance(osc_address, *args):
         growthSpeed = 0.22
         x_position = 0.35
 
-        wiggle_amplitude = 0.05
         wiggle_frequency = 2.3
+        wiggle_amplitude = 0 
+        if animation_manager.section_trigger_count > 3:
+            wiggle_amplitude = 0.05
+
         x_wiggle = lambda t, seed: wiggle_amplitude * smoothstep(lifetime, 0, t) * smoothwiggle(t, frequency=wiggle_frequency, seed=seed, octaves=1)
         y_wiggle = lambda t, seed: wiggle_amplitude * smoothstep(lifetime, 0, t) * smoothwiggle(t, frequency=wiggle_frequency, seed=seed, octaves=1)
 
@@ -265,9 +259,10 @@ def run_performance(osc_address, *args):
         # make set of rings for each trigger
         for i in range(rings_per_trigger):
             
-            color = random.choice([c0, c1, c2, c3])
+            color_1 = alice_color if i % 2 == 0 else white
+            color_2 = bob_color if i % 2 == 0 else white            
 
-            animation_manager.trigger_animation("ring", {'color': color,
+            animation_manager.trigger_animation("ring", {'color': color_1,
                                                         'rotation_speed': 0.5,
                                                         'arm_count': 0,
                                                         'lifetime': lifetime,
@@ -279,7 +274,7 @@ def run_performance(osc_address, *args):
                                                         }
 
                                                         })
-            animation_manager.trigger_animation("ring", {'color': color,
+            animation_manager.trigger_animation("ring", {'color': color_2,
                                                         'rotation_speed': 0.5,
                                                         'arm_count': 0,
                                                         'lifetime': lifetime,
@@ -301,7 +296,7 @@ def run_performance(osc_address, *args):
 
 
         # parameters
-        lifetime = 5.5
+        lifetime = 4.8
         fadeout_length = 0.5
         fadein_length = 0.3
         opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
@@ -396,7 +391,7 @@ def run_performance(osc_address, *args):
         alice_arms = 10 if alice_measurement == 1 else 5
         bob_arms = 10 if bob_measurement == 1 else 5
 
-        lifetime = 5
+        lifetime = 2.820
         fadeout_length = 0.5
         fadein_length = 0.3
         opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
@@ -436,18 +431,12 @@ def run_performance(osc_address, *args):
     # -----------------------------------------
     # 
     # -----------------------------------------
-    elif animation_manager.current_section == 7:
-        pass
-
-    # -----------------------------------------
-    # 
-    # -----------------------------------------
     # TODO build up to climax in the middle with trigger counting
     # TODO special ending with morph to line
-    # TODO implement mix of curretn section 8 and 9 animations to make it not boring
-    elif animation_manager.current_section == 8:
+    # TODO implement mix of curretn section 7 and 8 animations to make it not boring
+    elif animation_manager.current_section == 7:
 
-        lifetime = 5
+        lifetime = 3.200
 
         dot_thickness = 0.1
         dot_count = 13 - animation_manager.section_trigger_count
@@ -491,7 +480,7 @@ def run_performance(osc_address, *args):
     # -----------------------------------------
     # 
     # -----------------------------------------
-    elif animation_manager.current_section == 9:
+    elif animation_manager.current_section == 8:
 
         dot_size = 0.05
         dot_thickness = 0.01

@@ -176,16 +176,27 @@ class TimeTaggerController:
         for name, c in zip(['Alice_T', 'Alice_R', 'Bob_T', 'Bob_R'], C):
             print(f"{name:<8}: {c:>5} ps \t/ {c * 0.3:>7.1f} mm")
 
-    def performDelayAdjustment(self, integration_time=2, set=True):
+    def performDelayAdjustment(self, integration_time=2, set=True, manual_delays=None):
         """
         Returns delay in ps
         integration_time is to be given in s 
 
         Allows for multiple calls and makes an update to the adjustment instead of starting over
+
+        if manual delays are given (list of 4 numbers in pico seconds), then no delay adjustment will be performed
+
+        Only works if coincidences are present between all combinations of SPCMs
         """
+
 
         alice_channels = [ self.assigned_channels['Alice_T'], self.assigned_channels['Alice_R']]
         bob_channels = [ self.assigned_channels['Bob_T'], self.assigned_channels['Bob_R']]
+        
+        # if manual delays given, set them and return
+        if manual_delays is not None and set:
+            for ch, delay in zip([*alice_channels, *bob_channels], manual_delays):
+                self.tagger.setInputDelay(ch, delay)
+            return None
 
         Tdelays = self._getDelays(self.assigned_channels['Alice_T'], bob_channels, integration_time=integration_time)
         Rdelays = self._getDelays(self.assigned_channels['Alice_R'], bob_channels, integration_time=integration_time)
@@ -213,7 +224,7 @@ class TimeTaggerController:
                 self.tagger.setInputDelay(ch, newDelay)
 
             # measure delays again to see new delays 
-            C_new = self.performDelayAdjustment(set=False)
+            C_new = self.performDelayAdjustment(integration_time=integration_time / 3, set=False)
             print("\nDelays After Correction")
             self._print_delays(C_new)
 
@@ -337,11 +348,9 @@ class TimeTaggerController:
                 # calculate correlations 
                 corrs[i, j] = (N[0] - N[1] - N[2] + N[3]) / N.sum()
                 if debug:
-                    print(f"\ncorr[{'a' if i == 0 else 'A'},{'b' if j==0 else 'B'}] = {corrs[i, j]}")
-                    print(f"\tN[{self.coincidence_channel_names[0]}]={N[0]}")
-                    print(f"\tN[{self.coincidence_channel_names[1]}]={N[1]}")
-                    print(f"\tN[{self.coincidence_channel_names[2]}]={N[2]}")
-                    print(f"\tN[{self.coincidence_channel_names[3]}]={N[3]}")
+                    print(f"\ncorr[{'a' if i == 0 else 'A'},{'b' if j==0 else 'B'}] = {corrs[i, j]:.5}")
+                    for x in range(4):
+                        print(f"\tN[{self.coincidence_channel_names[x]}]={N[x]:>6}\t({N[x] / N.sum():<4.3f})")
         
         # Calculate S
         S = np.abs(corrs[0,0] + corrs[0,1] + corrs[1,0] - corrs[1,1])
@@ -399,10 +408,8 @@ class TimeTaggerController:
                     a_angle_label = 'a' if i==0 else 'A'
                     b_angle_label = 'b' if j==0 else 'B'
                     print(f"\ncorr[{a_angle_label},{b_angle_label}] = {np.array([float(f'{corr:.3f}') for corr in corrs[:, i, j]])}")
-                    print(f"\tN[{a_angle_label} , {b_angle_label} ]={N[:, 0]}")
-                    print(f"\tN[{a_angle_label} , {b_angle_label}']={N[:, 1]}")
-                    print(f"\tN[{a_angle_label}', {b_angle_label} ]={N[:, 2]}")
-                    print(f"\tN[{a_angle_label}', {b_angle_label}']={N[:, 3]}")
+                    for x in range(4):
+                        print(f"\tN[{a_angle_label} , {b_angle_label} ]={N[:, x]}")
         
         # Calculate S
         S = np.abs(corrs[:,0,0] + corrs[:,0,1] + corrs[:,1,0] - corrs[:,1,1])
