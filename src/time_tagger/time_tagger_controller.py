@@ -177,6 +177,7 @@ class TimeTaggerController:
             print(f"{name:<8}: {c:>5} ps \t/ {c * 0.3:>7.1f} mm")
 
     def performDelayAdjustment(self, integration_time=2, set=True, manual_delays=None):
+        # TODO Detect when not enough correlations and cancel delay adjustment
         """
         Returns delay in ps
         integration_time is to be given in s 

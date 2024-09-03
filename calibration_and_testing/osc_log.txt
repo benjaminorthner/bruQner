@@ -625,3 +625,12 @@
 2024-09-01 19:02:43,692 - INFO - Measurement [2, 2, -1, -1] sent to Clemens
 2024-09-01 19:22:23,274 - WARNING - No such comm: 380cf9b0c478422ca6745279f6b6fe72
 2024-09-01 19:22:24,765 - WARNING - No such comm: f361959d1f9642b4b1c9c86f76a6844e
+2024-09-02 16:14:16,296 - INFO - OSC Server Started. Serving on ('192.168.0.2', 7401)
+2024-09-02 16:14:16,297 - INFO - ----------------------------------------------------
+2024-09-02 16:14:18,683 - INFO - Measurement [1, 2, 3, 4] sent to Clemens
+2024-09-02 16:14:21,698 - INFO - Measurement hi sent to Visuals
+2024-09-02 16:17:52,645 - INFO - Received OSC_message: ('Q_all',)
+2024-09-02 16:17:54,904 - INFO - Received OSC_message: ('Q_all',)
+2024-09-02 16:17:55,789 - INFO - Received OSC_message: ('Q_all',)
+2024-09-02 16:28:09,722 - INFO - Received OSC_message: ('Q_all',)
+2024-09-02 16:28:14,153 - INFO - Received OSC_message: ('Q_all',)
