@@ -36,7 +36,7 @@ def watch_file(path, last_mtime):
 # Pygame and OpenGL setup
 def init_pygame_opengl():
 
-    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (0, 0)  # Change (1920, 0) or (3072, 0) based on screen resolution
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (int(1920/1.25), 0)  # Change (1920, 0) or (3072, 0) based on screen resolution
 
     pygame.init()
 

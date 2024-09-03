@@ -94,19 +94,19 @@ def run_performance(osc_address, *args):
 
         opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
 
-        initial_size = 0.3 + 0.5 * smoothstep(0, 5, animation_manager.section_trigger_count)
+        initial_size = 0.1 + 0.2* smoothstep(0, 5, animation_manager.section_trigger_count)
         growthSpeed = 0.02
         thickness = 0.08
 
         x_speed = 0.08
         # initial x depends on direction
-        nearest_x = initial_size * 0.3
+        nearest_x = initial_size * 0.6
         initial_x = nearest_x + (0 if direction == 1 else x_speed*lifetime)
 
         # add wiggle after a certain number of triggers
         wiggle_amplitude = 0
         if 5 <= animation_manager.section_trigger_count < 10:
-            wiggle_amplitude = 0.03
+            wiggle_amplitude = 0.008 * animation_manager.section_trigger_count
 
         wiggle_frequency = 4
 
@@ -157,7 +157,7 @@ def run_performance(osc_address, *args):
         t_wiggle = lambda seed, t: t_wiggle_amplitude * smoothwiggle(t, t_wiggle_frequency, seed)
 
 
-        size = 0.7
+        size = 0.5
         wiggle_amplitude = 0.1
         wiggle_frequency = 1.6
         size_wiggle = lambda seed, t: wiggle_amplitude * smoothwiggle(t, wiggle_frequency, seed)
@@ -274,17 +274,17 @@ def run_performance(osc_address, *args):
                                                         }
 
                                                         })
-            animation_manager.trigger_animation("ring", {'color': color_2,
-                                                        'rotation_speed': 0.5,
-                                                        'arm_count': 0,
-                                                        'lifetime': lifetime,
-                                                        'delay' : delay_between_rings * i,
-                                                        'dynamic': {
-                                                            'size': lambda t: growthSpeed * t,  
-                                                            'thickness' : thickness,
-                                                            'position': lambda t, seed=4*i: (x_position + x_wiggle(t, seed+2), y_wiggle(t, seed+3)),
-                                                        }
-                                                        })
+            #animation_manager.trigger_animation("ring", {'color': color_2,
+            #                                            'rotation_speed': 0.5,
+            #                                            'arm_count': 0,
+            #                                            'lifetime': lifetime,
+            #                                            'delay' : delay_between_rings * i,
+            #                                            'dynamic': {
+            #                                                'size': lambda t: growthSpeed * t,  
+            #                                                'thickness' : thickness,
+            #                                                'position': lambda t, seed=4*i: (x_position + x_wiggle(t, seed+2), y_wiggle(t, seed+3)),
+            #                                            }
+            #                                            })
 
     # -----------------------------------------
     # Quantum Rings vs Classical Lines
@@ -305,7 +305,7 @@ def run_performance(osc_address, *args):
         if animation_manager.is_quantum == 1: 
 
 
-            initial_size = 0.7
+            initial_size = 0.3
             growthSpeed = 0.02
             thickness = 0.08
 
@@ -356,14 +356,27 @@ def run_performance(osc_address, *args):
             # TODO clemens can send special section end signal
             # TODO lines grow to fill the screen at the end
             thickness = 0.02
+            position_x = 0.8
+
             animation_manager.trigger_animation("line", {'color': white,
                                                         'thickness': thickness,
                                                         'lifetime': lifetime,
                                                         'dynamic': {
                                                             'opacity': opacity,
-                                                            'angle': lambda t: 0.5 * np.sin(4*t),
-                                                            'length': lambda t: 0.7 + 0.4 * np.cos(3*t),
-                                                            'position': lambda t: (0, 0),
+                                                            'angle': lambda t: 0.1 * np.sin(2*t + 0.23),
+                                                            'length': lambda t:0.5,
+                                                            'position': lambda t: (position_x, 0),
+                                                        }
+            })
+
+            animation_manager.trigger_animation("line", {'color': white,
+                                                        'thickness': thickness,
+                                                        'lifetime': lifetime,
+                                                        'dynamic': {
+                                                            'opacity': opacity,
+                                                            'angle': lambda t: 0.1 * np.sin(2*t + 1.2),
+                                                            'length': lambda t: 0.5,
+                                                            'position': lambda t: (-position_x, -0.5*np.sin(0.2*t)),
                                                         }
             })
 
@@ -386,19 +399,21 @@ def run_performance(osc_address, *args):
 
         direction_right = 1 if alice_basis == 1 else -1
         direction_left = 1 if bob_basis == 1 else -1
-        rotation_speed = 1
+        rotation_speed = 2
         
         alice_arms = 10 if alice_measurement == 1 else 5
         bob_arms = 10 if bob_measurement == 1 else 5
 
         lifetime = 2.820
-        fadeout_length = 0.5
+        fadeout_length = 0.001
         fadein_length = 0.3
         opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
 
+
         initial_size = 3
         thickness = 0.05
-        size = lambda t: initial_size - 2.5 * smoothstep(0, fadein_length, t) - 0.06*t
+        size = lambda t: 0.3 * smoothstep(0, fadein_length, t) - 0.06*t
+
 
         x_position = 0.35
 
@@ -437,46 +452,61 @@ def run_performance(osc_address, *args):
     elif animation_manager.current_section == 7:
 
         lifetime = 3.200
+        if animation_manager.is_quantum == 1: 
+        
+            dot_thickness = 0.1
+            dot_count = 13 - animation_manager.section_trigger_count
 
-        dot_thickness = 0.1
-        dot_count = 13 - animation_manager.section_trigger_count
+            rotation_speed = 0.5
 
-        rotation_speed = 0.5
+            ring_radius = 0.8
+            ring_grow_time = 3
 
-        ring_radius = 0.8
-        ring_grow_time = 3
+            x_position = 0.35
 
-        x_position = 0.35
+            max_dot_size = 0.1 + 0.05 * smoothstep(0, 13, animation_manager.section_trigger_count)
+            size_fadein_length = 3
+            size_fadeout_length = 2
+            dot_size = lambda t: max_dot_size * smoothstep(0, size_fadein_length, t) * smoothstep(lifetime, lifetime - size_fadeout_length, t)
 
-        max_dot_size = 0.05
-        size_fadein_length = 3
-        size_fadeout_length = 2
-        dot_size = lambda t: max_dot_size * smoothstep(0, size_fadein_length, t) * smoothstep(lifetime, lifetime - size_fadeout_length, t)
+            opacity_fadein_length = 2
+            opacity_fadeout_length = 2
+            opacity = lambda t: smoothstep(0, opacity_fadein_length, t) * smoothstep(lifetime, lifetime - opacity_fadeout_length, t)
 
-        opacity_fadein_length = 2
-        opacity_fadeout_length = 2
-        opacity = lambda t: smoothstep(0, opacity_fadein_length, t) * smoothstep(lifetime, lifetime - opacity_fadeout_length, t)
+            # randomly delay one of the rings to create staggered effect
+            delays = [0, random.random()]
+            random.shuffle(delays)
 
-        # randomly delay one of the rings to create staggered effect
-        delays = [0, random.random()]
-        random.shuffle(delays)
+            for x_pos, rot_dir, delay in zip([x_position, -x_position], [1, -1], delays):
 
-        for x_pos, rot_dir, delay in zip([x_position, -x_position], [1, -1], delays):
+                animation_manager.trigger_animation("dot_ring", {'color': eval(random.choice(['c0', 'c1', 'c2', 'c3'])),
+                                                                'dot_thickness': dot_thickness,
+                                                                'dot_count': dot_count,
+                                                                'lifetime': lifetime,
+                                                                'delay': delay,
+                                                                'dynamic': {
+                                                                    'opacity': opacity,
+                                                                    'position': lambda t, x_pos=x_pos: (x_pos, 0),
+                                                                    'angle': lambda t, rot_dir=rot_dir: rot_dir * rotation_speed *  t,
+                                                                    'ring_radius': lambda t: ring_radius * smoothstep(0, ring_grow_time, t) ,
+                                                                    'dot_size': dot_size,
+                                                                }
+                                                                })
+        elif animation_manager.is_quantum == 0:
 
-            animation_manager.trigger_animation("dot_ring", {'color': eval(random.choice(['c0', 'c1', 'c2', 'c3'])),
-                                                            'dot_thickness': dot_thickness,
-                                                            'dot_count': dot_count,
-                                                            'lifetime': lifetime,
-                                                            'delay': delay,
-                                                            'dynamic': {
-                                                                'opacity': opacity,
-                                                                'position': lambda t, x_pos=x_pos: (x_pos, 0),
-                                                                'angle': lambda t, rot_dir=rot_dir: rot_dir * rotation_speed *  t,
-                                                                'ring_radius': lambda t: ring_radius * smoothstep(0, ring_grow_time, t) ,
-                                                                'dot_size': dot_size,
-                                                            }
-                                                            })
+            thickness = 0.02
+            opacity = 1
 
+            animation_manager.trigger_animation("line", {'color': white,
+                                                        'thickness': thickness,
+                                                        'lifetime': lifetime,
+                                                        'dynamic': {
+                                                            'opacity': opacity,
+                                                            'angle': lambda t: 0,
+                                                            'length': lambda t: 10,
+                                                            'position': lambda t: (0, 0,)#0.6 - 2*smoothstep(0,lifetime,t)),
+                                                        }
+            })
     # -----------------------------------------
     # 
     # -----------------------------------------
