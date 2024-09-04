@@ -90,7 +90,7 @@ def run_performance(osc_address, *args):
     c2 = (1.0, 1.0, w) # yellow
     c3 = (1.0, w, 1.0) # purple
 
-    y_shift = -0.4
+    y_shift = -0.3
 
     # Determine the group of colors based on the basis values
     if alice_basis == bob_basis:
@@ -240,7 +240,7 @@ def run_performance(osc_address, *args):
                 size_left, size_right = size_choice(wiggle=True), size_choice(wiggle=True)
                 thickness_left, thickness_right = thickness_choice(wiggle=True), thickness_choice(wiggle=True)
 
-            revolution_count = 2
+            revolution_count = 1
             circle_freq = int(revolution_count) * 2 * np.pi / lifetime
             circle_amp = 0.06
 
@@ -249,7 +249,7 @@ def run_performance(osc_address, *args):
             bob_phase = np.pi/2
             alice_dir = 1 if alice_basis == 1 else -1
             bob_dir = 1 if bob_basis == 1 else -1
-            circle = lambda t, phase, dir: circle_amp * np.array([dir*np.sin(circle_freq*t + phase), np.cos(dir*circle_freq*t + phase)])
+            circle = lambda t, phase, dir: circle_amp * np.array([np.sin(dir*circle_freq*t + phase), np.cos(dir*circle_freq*t + phase)])
 
             animation_manager.trigger_animation("ring", {'color': alice_color,
                                                         'opacity': 1,
@@ -291,7 +291,7 @@ def run_performance(osc_address, *args):
                 nothing_displayed = False
                 print('Alice SPECIAL')
 
-                alice_lifetime = lifetime * 0.2
+                alice_lifetime = lifetime * 0.4
                 delay = 2.2
                 
                 dot_size = 0.06
@@ -300,23 +300,24 @@ def run_performance(osc_address, *args):
                 ring_radius = 0.5
 
                 rotation_speed = 2.5
-                growth_speed = 3
+                growth_speed = 1.5
 
                 pos_x = 0.5 * (1 - 2*random.random())
                 pos_y = 0.5 * (1 - 2*random.random())
-
-                animation_manager.trigger_animation("dot_ring", {'color': alice_color,
-                                                                'dot_thickness': dot_thickness,
-                                                                'dot_count': dot_count,
-                                                                'lifetime': alice_lifetime,
-                                                                'delay': delay,
-                                                                'dynamic': {
-                                                                    'position': lambda t: (pos_x, pos_y),
-                                                                    'angle': lambda t: rotation_speed*t,
-                                                                    'ring_radius': lambda t: 2 - growth_speed * t,
-                                                                    'dot_size': lambda t: dot_size + 0.1 * t,
-                                                                }
-                                                                })
+                
+                for k in range(3):
+                    animation_manager.trigger_animation("dot_ring", {'color': alice_color,
+                                                                    'dot_thickness': dot_thickness,
+                                                                    'dot_count': dot_count,
+                                                                    'lifetime': alice_lifetime,
+                                                                    'delay': delay + 0.2*k,
+                                                                    'dynamic': {
+                                                                        'position': lambda t: (pos_x, pos_y),
+                                                                        'angle': lambda t: rotation_speed*t,
+                                                                        'ring_radius': lambda t: 2 - growth_speed * t,
+                                                                        'dot_size': lambda t: dot_size + 0.07 * t,
+                                                                    }
+                                                                    })
 
             # if bob
             # rising
@@ -327,7 +328,7 @@ def run_performance(osc_address, *args):
                 nothing_displayed = False
                 print('BOB SPECIAL')
 
-                bob_lifetime = lifetime * 0.2
+                bob_lifetime = lifetime * 0.5
                 delay = 0.4
 
                 dot_size = 0.06
@@ -336,23 +337,24 @@ def run_performance(osc_address, *args):
                 ring_radius = 0.5
 
                 rotation_speed = 2
-                growth_speed = 3
+                growth_speed = 1.5
                 
                 pos_x = 0.5 * (1 - 2*random.random())
                 pos_y = 0.5 * (1 - 2*random.random())
 
-                animation_manager.trigger_animation("dot_ring", {'color': bob_color,
-                                                                'dot_thickness': dot_thickness,
-                                                                'dot_count': dot_count,
-                                                                'lifetime': bob_lifetime,
-                                                                'delay': delay,
-                                                                'dynamic': {
-                                                                    'position': lambda t: (pos_x, pos_y),
-                                                                    'angle': lambda t: rotation_speed*t,
-                                                                    'ring_radius': lambda t: growth_speed * t,
-                                                                    'dot_size': lambda t: dot_size + 0.1 * t,
-                                                                }
-                                                                })
+                for k in range(3):
+                    animation_manager.trigger_animation("dot_ring", {'color': bob_color,
+                                                                    'dot_thickness': dot_thickness,
+                                                                    'dot_count': dot_count,
+                                                                    'lifetime': bob_lifetime,
+                                                                    'delay': delay + 0.15*k,
+                                                                    'dynamic': {
+                                                                        'position': lambda t: (pos_x, pos_y),
+                                                                        'angle': lambda t: rotation_speed*t,
+                                                                        'ring_radius': lambda t: growth_speed * t,
+                                                                        'dot_size': lambda t: dot_size + 0.1 * t,
+                                                                    }
+                                                                    })
             
             if nothing_displayed:
                 print('NO VISUAL')
@@ -379,15 +381,26 @@ def run_performance(osc_address, *args):
         # x_wiggle = lambda t, seed: wiggle_amplitude * smoothstep(lifetime, 0, t) * smoothwiggle(t, frequency=wiggle_frequency, seed=seed, octaves=1)
         # y_wiggle = lambda t, seed: wiggle_amplitude * smoothstep(lifetime, 0, t) * smoothwiggle(t, frequency=wiggle_frequency, seed=seed, octaves=1)
 
-        rings_per_trigger = 4
         delay_between_rings = 1.1
 
-        position_x = 2 * (0.5 - random.random())
-        position_y = 2 * (0.5 - random.random())
+        position_x = 2.5 * (0.5 - random.random())
+        position_y = 2.5 * (0.5 - random.random())
+
+        if animation_manager.section_trigger_count <= 7:
+            rings_per_trigger = 2
+            colors = [alice_color, bob_color]      
+
+        elif animation_manager.section_trigger_count <= 14:
+            rings_per_trigger = 3
+            colors = [alice_color, white, bob_color]
+
+        else:
+            rings_per_trigger = 4
+            colors = [white, alice_color, white, bob_color]      
+
         # make set of rings for each trigger
         for i in range(rings_per_trigger):
             
-            colors = [alice_color, white, bob_color, white]      
 
 
             animation_manager.trigger_animation("ring", {'color': colors[i],
@@ -397,7 +410,7 @@ def run_performance(osc_address, *args):
                                                         'dynamic': {
                                                             'size': lambda t: growthSpeed * t,  
                                                             'thickness' : thickness,
-                                                            'position': lambda t, seed=4*i: (position_x, position_y + y_shift),
+                                                            'position': lambda t, seed=4*i: (position_x, position_y),
                                                         }
 
                                                         })
@@ -550,7 +563,7 @@ def run_performance(osc_address, *args):
                                                     'lifetime': lifetime,
                                                     'dynamic': {
                                                         'opacity': opacity,
-                                                        'angle': lambda t: max_angle(t) * np.sin(2 * np.pi * t / (10 * rotation_period) + phaseoffset) + angleoffset,
+                                                        'angle': lambda t: max_angle(t) * np.sin(2 * np.pi * t / (1000 * rotation_period) + phaseoffset) + angleoffset,
                                                         'length': lambda t:100,
                                                         'position': lambda t, seed=seed: (position_x(t, seed), position_y(t, seed)),
                                                     }
@@ -580,6 +593,7 @@ def run_performance(osc_address, *args):
             bob_arms = random.randint(2, 10)
 
             lifetime = 3.428 * 1.1
+            movement_lifetime = 3.428
             fadeout_length = 0.5
             fadein_length = 0.5
             opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
@@ -591,10 +605,24 @@ def run_performance(osc_address, *args):
 
             initial_x = 0.5
             oscillation_amplitude = initial_x*1.8
-            x_alice = lambda t: oscillation_amplitude * np.cos(np.pi * t /(lifetime / 1.1)) ** 2
-            x_bob = lambda t: oscillation_amplitude * -np.cos(np.pi * t / (lifetime / 1.1)) ** 2
+            x_alice = lambda t: oscillation_amplitude * np.cos(np.pi * t /(movement_lifetime)) ** 2
+            x_bob = lambda t: oscillation_amplitude * -np.cos(np.pi * t / (movement_lifetime)) ** 2
+
+            # y wiggle
+            wiggle_amplitude = 0.15
+            wiggle_frequency = 0.15
 
 
+            wiggle_fadeout_length = 1.5
+            wiggle_fadein_length = 1.5
+            wiggle_opacity = lambda t: smoothstep(0, wiggle_fadein_length, t) * smoothstep(movement_lifetime, movement_lifetime - wiggle_fadeout_length, t)
+
+
+            seed_alice = random.randint(0, 100) 
+            seed_bob = random.randint(0, 100) 
+
+            y_position_alice = lambda t, seed: wiggle_opacity(t) * wiggle_amplitude * perlin(t * wiggle_frequency, seed) ** 2
+            y_position_bob = lambda t, seed: wiggle_opacity(t) * wiggle_amplitude * perlin(t * wiggle_frequency, seed*100 + 1) ** 2
 
             animation_manager.trigger_animation("ring", {'color': alice_color,
                                                         'arm_count': alice_arms,
@@ -604,7 +632,7 @@ def run_performance(osc_address, *args):
                                                         'dynamic': {
                                                             'size': size,  
                                                             'opacity': opacity,
-                                                            'position': lambda t: (initial_x + x_alice(t), y_shift),
+                                                            'position': lambda t, seed=seed_alice: (initial_x + x_alice(t), y_position_alice(t, seed) + y_shift),
 
                                                         }
                                                         })
@@ -617,7 +645,7 @@ def run_performance(osc_address, *args):
                                                         'dynamic': {
                                                             'size': size,  
                                                             'opacity': opacity,
-                                                            'position': lambda t: (-initial_x + x_bob(t), y_shift),
+                                                            'position': lambda t, seed=seed_bob: (-initial_x + x_bob(t), y_position_bob(t, seed) + y_shift),
                                                         }
                                                         })
         elif animation_manager.current_motif_set == 2:
@@ -633,7 +661,8 @@ def run_performance(osc_address, *args):
 
         lifetime = 4.168
         if animation_manager.is_quantum == 1: 
-        
+            
+            lifetime = lifetime * 1.2
             dot_thickness = 0.1
             dot_count = 1 + abs(25 - 1 * animation_manager.section_trigger_count)
 
@@ -644,8 +673,8 @@ def run_performance(osc_address, *args):
 
             x_position = 0.5
 
-            max_dot_size = 0.01 + 0.08 * smoothstep(0, 26, animation_manager.section_trigger_count)
-            size_fadein_length = 3
+            max_dot_size = 0.03 + 0.08 * smoothstep(0, 26, animation_manager.section_trigger_count)
+            size_fadein_length = 0.01
             size_fadeout_length = 2
             dot_size = lambda t: max_dot_size * smoothstep(0, size_fadein_length, t) * smoothstep(lifetime, lifetime - size_fadeout_length, t)
 
@@ -677,20 +706,35 @@ def run_performance(osc_address, *args):
             thickness = 0.02
             opacity = 1
 
+            length = 0.3 + 2.5 * random.random()
+
             animation_manager.trigger_animation("line", {'color': white,
                                                         'thickness': thickness,
                                                         'lifetime': lifetime,
+                                                        'length' : length,
                                                         'dynamic': {
                                                             'opacity': opacity,
-                                                            'angle': lambda t: 0,
-                                                            'length': lambda t: 10,
-                                                            'position': lambda t: (0, 2 * (np.sin(np.pi * t / (4 * lifetime) + 3*np.pi/4) ** 2 - 0.5))
+                                                            'angle': lambda t: 0.03 * np.sin(2*np.pi*t/lifetime),
+                                                            'position': lambda t: (0,  y_shift -0.1 * np.sin(2*np.pi * t/lifetime))
                                                         }
             })
     # -----------------------------------------
     # 
     # -----------------------------------------
     elif animation_manager.current_section == 8:
+        lifetime = 1000
+        thickness = lambda t: 0.01 + 0.03 * smoothstep(0, 60 * 4, t)
+        length = lambda t: 2.5 * smoothstep(0, 60 * 4, t)
+        animation_manager.trigger_animation("line", {'color': white,
+                                                    'lifetime': lifetime,
+                                                    'dynamic': {
+                                                        'length' : length,
+                                                        'thickness': thickness,
+                                                        'position': lambda t: (0, y_shift)
+                                                    }
+        })
+
+    elif animation_manager.current_section == 9:
 
         dot_size = 0.05
         dot_thickness = 0.01

@@ -104,7 +104,7 @@ class OSCCommunicator:
 
     # Handlers for received messages
     def _default_handler(self, address, *args):
-        self.log(f"Received OSC_message: {args}")
+        self.log(f"Received OSC_message: {args} with address: {address}")
 
     def _handle_test_response(self, address, *args):
         self.log("Test successful")
