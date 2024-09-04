@@ -17,10 +17,10 @@ RESOLUTION = (int(3072 / 2), int(1920 / 2))
 MAX_ANIMATIONS = 30
 
 # Should OSC be used? Usually False for testing purposes
-USE_OSC = False
+USE_OSC = True
 
 # Set IP and port for visual server. Setup and Musicians send visual commands to this address
-MY_IP = "192.168.0.5" 
+MY_IP = "192.168.0.2" 
 MY_PORT = 7401
 
 # If true then can update code while its running with changes reflected in the next animation
