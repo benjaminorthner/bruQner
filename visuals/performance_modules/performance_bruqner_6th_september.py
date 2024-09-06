@@ -83,6 +83,7 @@ def run_performance(osc_address, *args):
     red = (1,0.1,0.1)
     blue = (0.2,0.2,1)
     purple = (0.5, 0, 0.5)
+    black = (0, 0, 0)
 
     w = 0.7 # whiteness
     c0 = (1.0, 0.7*w, 0.7*w) # red
@@ -499,7 +500,7 @@ def run_performance(osc_address, *args):
 
             angleoffset = random.random()
             phaseoffset = 2 * np.pi * random.random()
-            max_angle = 0.8 * random.random()
+            max_angle = 0.1 + 0.7 * random.random()
 
 
             position = (1-2*random.random(), 1-2*random.random())
@@ -662,7 +663,7 @@ def run_performance(osc_address, *args):
         lifetime = 4.168
         if animation_manager.is_quantum == 1: 
             
-            lifetime = lifetime * 1.2
+            lifetime = lifetime * 1.4
             dot_thickness = 0.1
             dot_count = 1 + abs(25 - 1 * animation_manager.section_trigger_count)
 
@@ -703,25 +704,140 @@ def run_performance(osc_address, *args):
                                                                 })
         elif animation_manager.is_quantum == 0:
 
-            thickness = 0.02
-            opacity = 1
+            if animation_manager.current_motif_set != 8:
+                
+                phase = random.random() * 2 * np.pi
 
-            length = 0.3 + 2.5 * random.random()
+                thickness = 0.02
+                opacity = 1
 
-            animation_manager.trigger_animation("line", {'color': white,
-                                                        'thickness': thickness,
+                length = 3
+                wiggle_amplitude = lambda t: 0.1 + 0.5 * smoothstep(15, 40, animation_manager.section_trigger_count)
+
+                animation_manager.trigger_animation("line", {'color': white,
+                                                            'thickness': thickness,
+                                                            'lifetime': lifetime,
+                                                            'length' : length,
+                                                            'dynamic': {
+                                                                'opacity': opacity,
+                                                                'angle': 0,
+                                                                'position': lambda t: (0,  y_shift - wiggle_amplitude(t) * np.sin(2*np.pi * t/lifetime))
+                                                            }
+                })
+
+            elif animation_manager.current_motif_set == 8:
+                
+                lifetime = 1000
+                period = 10
+                phase = random.random() * 2 * np.pi
+
+                thickness = 0.02
+                opacity = 1
+
+                length = 3
+
+                animation_manager.trigger_animation("line", {'color': white,
+                                                            'thickness': thickness,
+                                                            'lifetime': lifetime,
+                                                            'length' : length,
+                                                            'dynamic': {
+                                                                'opacity': opacity,
+                                                                'angle': 0,# lambda t: 0.03 * np.sin(2*np.pi*t/period),
+                                                                'position': lambda t: (0,  y_shift - 0.5 * np.sin(2*np.pi * t/period + phase))
+                                                            }
+                })
+    # -----------------------------------------
+    # Variations of Perger Preludium
+    # -----------------------------------------
+    # 30:55 start
+    # 31:23 upswing
+    # 31:31 upswing 2
+
+    # 32:00 start 2
+    # 32:51 start 3
+
+    # 34:00 start 4
+    # 34:38 big upswing
+    # 35:34 small upswing again
+    # 35:13 big upswing
+    # 35:47 very big upswing
+    # 36:05 big upswing
+    # 37:28 final long held note
+    # 36:41 ending
+    elif animation_manager.current_section == 8:
+
+        if animation_manager.section_trigger_count < 2:
+            
+            lifetime = 1000
+            animation_manager.trigger_animation("ring", {'color': white,
+                                                        'arm_count': 1,
                                                         'lifetime': lifetime,
-                                                        'length' : length,
+                                                        'thickness': 0.1,
                                                         'dynamic': {
-                                                            'opacity': opacity,
-                                                            'angle': lambda t: 0.03 * np.sin(2*np.pi*t/lifetime),
-                                                            'position': lambda t: (0,  y_shift -0.1 * np.sin(2*np.pi * t/lifetime))
+                                                            'size': 2.2,  
+                                                            'opacity': 1,
+                                                            'position': (0,-2.1),
+                                                        }    
+                                                    })
+            
+            thickness = 2
+            start_x = thickness
+            period = 60 * 1.1
+            x_shift = lambda t: 2*t / period
+
+            start_height = 2
+                
+            animation_manager.trigger_animation("line", {'color': black,
+                                                        'lifetime': lifetime,
+                                                        'angle': np.pi / 2,
+                                                        'dynamic': {
+                                                            'length' : 100,
+                                                            'thickness': thickness,
+                                                            'position': lambda t: (start_x + x_shift(t), start_height)
                                                         }
             })
-    # -----------------------------------------
-    # 
-    # -----------------------------------------
-    elif animation_manager.current_section == 8:
+
+            animation_manager.trigger_animation("line", {'color': black,
+                                                        'lifetime': lifetime,
+                                                        'angle': np.pi / 2,
+                                                        'dynamic': {
+                                                            'length' : 5,
+                                                            'thickness': thickness,
+                                                            'position': lambda t: (-start_x - x_shift(t), 2)
+                                                        }
+            })
+
+        if animation_manager.section_trigger_count == 2:
+            
+            lifetime = 1000
+            thickness = 2
+            start_x = thickness
+            period = 60 * 1.2
+            x_shift = lambda t: 2*t / period
+
+            start_height = 2
+                
+            animation_manager.trigger_animation("line", {'color': black,
+                                                        'lifetime': lifetime,
+                                                        'angle': np.pi / 2,
+                                                        'dynamic': {
+                                                            'length' : 100,
+                                                            'thickness': thickness,
+                                                            'position': lambda t: (start_x + x_shift(period - t), start_height)
+                                                        }
+            })
+
+            animation_manager.trigger_animation("line", {'color': black,
+                                                        'lifetime': lifetime,
+                                                        'angle': np.pi / 2,
+                                                        'dynamic': {
+                                                            'length' : 5,
+                                                            'thickness': thickness,
+                                                            'position': lambda t: (-start_x - x_shift(period - t), 2)
+                                                        }
+            })
+
+    elif animation_manager.current_section == 100:
         lifetime = 1000
         thickness = lambda t: 0.01 + 0.03 * smoothstep(0, 60 * 4, t)
         length = lambda t: 2.5 * smoothstep(0, 60 * 4, t)
@@ -734,7 +850,8 @@ def run_performance(osc_address, *args):
                                                     }
         })
 
-    elif animation_manager.current_section == 9:
+
+    elif animation_manager.current_section == 200:
 
         dot_size = 0.05
         dot_thickness = 0.01
