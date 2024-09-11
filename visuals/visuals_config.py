@@ -2,7 +2,7 @@
 # ------------------------------
 
 # which perforamnce module to load (do not include file extension in name)
-PERFORMANCE_MODULE =  "performance_bruqner_v1"# "performance_trial_run_2"
+PERFORMANCE_MODULE =  "performance_bruqner_6th_september"# "performance_trial_run_2"
 
 # Screen resolution of output monitor (affected by display scaling)
 

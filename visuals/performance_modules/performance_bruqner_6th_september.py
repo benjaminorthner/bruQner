@@ -4,6 +4,9 @@ import math
 
 # PAPER IDEA: Show each section with property time graphs, can show vertical trigger lines
 
+# thickness multiplier for daytime performance
+tt  = 1.5
+
 # FUNCTIONS FOR WIGGLE
 # based on https://www.shadertoy.com/view/7ss3RX
 def R(v):
@@ -129,6 +132,7 @@ def run_performance(osc_address, *args):
         initial_size = 0.01 + 0.7* smoothstep(0, 10, animation_manager.section_trigger_count)
         growthSpeed = 0.02
         thickness = 0.02 + 0.06* smoothstep(0, 10, animation_manager.section_trigger_count)
+        thickness *= tt
 
         x_speed = 0.08
         # initial x depends on direction
@@ -186,7 +190,7 @@ def run_performance(osc_address, *args):
             fadein_length = 0.8
             wiggle_opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
 
-            thickness = 0.03
+            thickness = 0.03 * tt
             t_wiggle_amplitude = 0.3
             t_wiggle_frequency = 0.35# has to be this way for consecutive triggers to line up
             t_wiggle = lambda seed, t: t_wiggle_amplitude * smoothwiggle(t, t_wiggle_frequency, seed)
@@ -296,7 +300,7 @@ def run_performance(osc_address, *args):
                 delay = 2.2
                 
                 dot_size = 0.06
-                dot_thickness = 0.02
+                dot_thickness = 0.02 * tt
                 dot_count = 10
                 ring_radius = 0.5
 
@@ -333,7 +337,7 @@ def run_performance(osc_address, *args):
                 delay = 0.4
 
                 dot_size = 0.06
-                dot_thickness = 0.02
+                dot_thickness = 0.02 * tt
                 dot_count = 10
                 ring_radius = 0.5
 
@@ -434,7 +438,7 @@ def run_performance(osc_address, *args):
 
 
             initial_size = 0.3
-            thickness = 0.08
+            thickness = 0.08 * tt
 
             x_speed = 0.08
             # initial x depends on direction
@@ -494,7 +498,7 @@ def run_performance(osc_address, *args):
             fadein_length = 0.3
             opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
 
-            thickness = 0.02
+            thickness = 0.02 * tt
             position_x = 0.8
             lifetime = lifetime * 1.2
 
@@ -539,7 +543,7 @@ def run_performance(osc_address, *args):
         fadein_length = 2
         opacity = lambda t: smoothstep(0, fadein_length, t) * smoothstep(lifetime, lifetime - fadeout_length, t)
 
-        thickness = 0.02
+        thickness = 0.03 * tt
         position_x = 0.8
 
         angleoffset = random.random()
@@ -601,7 +605,7 @@ def run_performance(osc_address, *args):
 
 
             initial_size = 3
-            thickness = 0.05
+            thickness = 0.05 * tt
             size = 0.5 #lambda t: 0.3 * smoothstep(0, fadein_length, t) - 0.06*t
 
             initial_x = 0.5
@@ -664,7 +668,7 @@ def run_performance(osc_address, *args):
         if animation_manager.is_quantum == 1: 
             
             lifetime = lifetime * 1.4
-            dot_thickness = 0.1
+            dot_thickness = 0.1 * tt
             dot_count = 1 + abs(25 - 1 * animation_manager.section_trigger_count)
 
             rotation_speed = 0.25
@@ -708,7 +712,7 @@ def run_performance(osc_address, *args):
                 
                 phase = random.random() * 2 * np.pi
 
-                thickness = 0.02
+                thickness = 0.02 * tt
                 opacity = 1
 
                 length = 3
@@ -731,7 +735,7 @@ def run_performance(osc_address, *args):
                 period = 10
                 phase = random.random() * 2 * np.pi
 
-                thickness = 0.02
+                thickness = 0.02 * tt
                 opacity = 1
 
                 length = 3
@@ -763,7 +767,24 @@ def run_performance(osc_address, *args):
     # 35:47 very big upswing
     # 36:05 big upswing
     # 37:28 final long held note
-    # 36:41 ending
+    # 37:41 ending
+
+
+    # 00:00 start
+    # 00:28 upswing
+    # 00:36 upswing 2
+
+    # 01:05 start 2
+    # 01:56 start 3
+
+    # 03:05 start 4
+    # 03:43 big upswing
+    # 04:18 big upswing
+    # 04:39 small upswing again
+    # 04:52 very big upswing
+    # 05:10 big upswing
+    # 06:33 final long held note
+    # 06:46 ending
     elif animation_manager.current_section == 8:
 
         if animation_manager.section_trigger_count < 2:
@@ -772,7 +793,7 @@ def run_performance(osc_address, *args):
             animation_manager.trigger_animation("ring", {'color': white,
                                                         'arm_count': 1,
                                                         'lifetime': lifetime,
-                                                        'thickness': 0.1,
+                                                        'thickness': 0.2*tt,
                                                         'dynamic': {
                                                             'size': 2.2,  
                                                             'opacity': 1,
@@ -782,7 +803,8 @@ def run_performance(osc_address, *args):
             
             thickness = 2
             start_x = thickness
-            period = 60 * 1.1
+            #period = 60 * 1
+            period = 60 * 2.5
             x_shift = lambda t: 2*t / period
 
             start_height = 2
@@ -812,7 +834,7 @@ def run_performance(osc_address, *args):
             lifetime = 1000
             thickness = 2
             start_x = thickness
-            period = 60 * 1.2
+            period = 60 * 1
             x_shift = lambda t: 2*t / period
 
             start_height = 2
@@ -836,40 +858,4 @@ def run_performance(osc_address, *args):
                                                             'position': lambda t: (-start_x - x_shift(period - t), 2)
                                                         }
             })
-
-    elif animation_manager.current_section == 100:
-        lifetime = 1000
-        thickness = lambda t: 0.01 + 0.03 * smoothstep(0, 60 * 4, t)
-        length = lambda t: 2.5 * smoothstep(0, 60 * 4, t)
-        animation_manager.trigger_animation("line", {'color': white,
-                                                    'lifetime': lifetime,
-                                                    'dynamic': {
-                                                        'length' : length,
-                                                        'thickness': thickness,
-                                                        'position': lambda t: (0, y_shift)
-                                                    }
-        })
-
-
-    elif animation_manager.current_section == 200:
-
-        dot_size = 0.05
-        dot_thickness = 0.01
-        lifetime = 5 * 1.33
-        opacity = 1
-        dot_count = 10
-        ring_radius = 0.5
-        angle = 0
-        animation_manager.trigger_animation("dot_ring", {'color': white,
-                                                        'dot_thickness': dot_thickness,
-                                                        'dot_count': dot_count,
-                                                        'lifetime': lifetime,
-                                                        'dynamic': {
-                                                            'opacity': opacity,
-                                                            'position': lambda t: (0.35, 0),
-                                                            'angle': lambda t: t,
-                                                            'ring_radius': lambda t: 1 * t,
-                                                            'dot_size': lambda t: dot_size + 0.1 * t,
-                                                        }
-                                                        })
 
