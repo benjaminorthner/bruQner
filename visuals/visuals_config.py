@@ -2,22 +2,20 @@
 # ------------------------------
 
 # which perforamnce module to load (do not include file extension in name)
-PERFORMANCE_MODULE =  "performance_bruqner_6th_september"# "performance_trial_run_2"
+PERFORMANCE_MODULE =  "performance_bruqner_4th_september"# "performance_trial_run_2"
 
 # Screen resolution of output monitor (affected by display scaling)
 
 # Performance
-display_scaling_factor = 1.25
-RESOLUTION = (int(1920 / display_scaling_factor), int(1080 // display_scaling_factor))
-
-
-#RESOLUTION = (int(3072 / 2), int(1920 / 2))
+display_scaling_factor = 2
+#RESOLUTION = (int(1920 / display_scaling_factor), int(1080 // display_scaling_factor))
+RESOLUTION = (int(3072 / display_scaling_factor), int(1920 / display_scaling_factor))
 
 # GLSL settings (dont go too high, becomes unstable)
 MAX_ANIMATIONS = 30
 
 # Should OSC be used? Usually False for testing purposes
-USE_OSC = True
+USE_OSC = False
 
 # Set IP and port for visual server. Setup and Musicians send visual commands to this address
 MY_IP = "192.168.0.5" 

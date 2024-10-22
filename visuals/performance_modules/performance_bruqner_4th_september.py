@@ -767,7 +767,7 @@ def run_performance(osc_address, *args):
             
             thickness = 2
             start_x = thickness
-            period = 60 * 1.1
+            period = 20 * 1.1
             x_shift = lambda t: 2*t / period
 
             start_height = 2

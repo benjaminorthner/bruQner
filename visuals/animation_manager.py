@@ -36,8 +36,8 @@ def watch_file(path, last_mtime):
 # Pygame and OpenGL setup
 def init_pygame_opengl():
 
-    #os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (0, 0) 
-    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (int(1920/1.25), 0)  # Change (1920, 0) or (3072, 0) based on screen resolution
+    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (0, 0) 
+    #os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (int(1920/1.25), 0)  # Change (1920, 0) or (3072, 0) based on screen resolution
 
     pygame.init()
 
@@ -362,7 +362,7 @@ def main():
     screen = init_pygame_opengl()
 
     # init shader -----------------------------
-    shader_path = os.path.join(os.path.dirname(__file__), 'fragment_shader.glsl')
+    shader_path = os.path.join(os.path.dirname(__file__), 'fragment_shader.glslf')
     shader_program = create_shader_program(shader_path)
     last_shader_mtime = os.path.getmtime(shader_path)
     glUseProgram(shader_program)
