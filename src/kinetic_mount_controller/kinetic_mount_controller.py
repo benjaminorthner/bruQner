@@ -102,10 +102,18 @@ class KineticMountControl:
         thread.start()
         thread.join()
 
-    def rotate_simulataneously(self, alice_angle, bob_angle, wait_for_completion=True):
+    def rotate_simulataneously(self, alice_angle, bob_angle, wait_for_completion=True, wait_for_elapsed_time=0):
         """
-        Uses multithreading to rotate bob and alice simultaneously
+        Uses multithreading to rotate bob and alice simultaneously.
+        
+        Parameters:
+            alice_angle: Target angle for Alice.
+            bob_angle: Target angle for Bob.
+            wait_for_completion: If True, waits for rotation to complete before returning.
+            wait_for_elapsed_time: Minimum time to wait before returning (in seconds).
         """
+        start_time = time.time()
+
         thread_a = threading.Thread(target=self.alice.set_angle, args=(alice_angle,))
         thread_b = threading.Thread(target=self.bob.set_angle, args=(bob_angle,))
 
@@ -117,6 +125,15 @@ class KineticMountControl:
         if wait_for_completion:
             thread_a.join()
             thread_b.join()
+            
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+
+        # Wait for the remainder of the specified time
+        if elapsed_time < wait_for_elapsed_time:
+            time.sleep(wait_for_elapsed_time - elapsed_time)
+        
+
 
 
 
