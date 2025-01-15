@@ -119,13 +119,14 @@ class KineticMountControl:
 
         # Start both threads
         thread_a.start()
+        time.sleep(0.004)
         thread_b.start()
 
         # Wait for both threads to complete
         if wait_for_completion:
             thread_a.join()
             thread_b.join()
-            
+
         # Calculate elapsed time
         elapsed_time = time.time() - start_time
 

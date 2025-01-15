@@ -2,6 +2,7 @@ import TimeTagger
 import numpy as np
 import asyncio
 import plotly.graph_objs as go
+import time
 from ipywidgets import Button, Output
 from time import sleep
 from src.kinetic_mount_controller import KineticMountControl
@@ -419,36 +420,159 @@ class TimeTaggerController:
         # rehome all mounts
         self.KMC.home()
 
-    def get_single_measurement(self, theta_a, theta_b, integration_time=0.1, coincidence_window_SI=0.5e-9) -> int:
+    
+    def collect_stream_data(self, integration_time, max_time, min_event_count=10):
+        """
+        Collect stream data from the TimeTagger, stopping when the minimum event count
+        is reached or the maximum time has elapsed.
+        
+        Parameters:
+            integration_time (float): Time to wait during each data collection attempt.
+            max_time (float): Maximum total time (in seconds) to attempt data collection.
+            min_event_count (int): Minimum number of events required to return data.
+        
+        Returns:
+            list: The eventsByChannel or an empty list if conditions are not met.
+        """
+        start_time = time.time()
+        events_by_channel = []
+
+        # Create the stream once and reuse it
+        stream = TimeTagger.TimeTagStream(
+            tagger=self.tagger,
+            n_max_events=1000,
+            channels=self.coincidences_vchannels.getChannels()
+        )
+
+        try:
+            while time.time() - start_time < max_time:
+                try:
+                    sleep(integration_time)
+                    stream_data = stream.getData()
+                    events_by_channel = stream_data.getChannels()
+
+                    # Check if the minimum event count is reached
+                    if len(events_by_channel) >= min_event_count:
+                        break
+                except Exception as e:
+                    print(f"Error during stream data collection: {e}")
+                    events_by_channel = []
+
+        finally:
+            stream.stop()  # Ensure the stream is stopped
+
+        # Log results
+        elapsed_time = time.time() - start_time
+        if len(events_by_channel) < min_event_count:
+            print(f"Failed to collect minimum events ({min_event_count}) after {elapsed_time:.2f} seconds.")
+        else:
+            print(f"Collected {len(events_by_channel)} events in {elapsed_time:.2f} seconds.")
+        
+        return events_by_channel
+
+    def get_single_measurement(self, theta_a, theta_b, integration_time=0.1, max_time=0.2, minimum_event_count=10, coincidence_window_SI=0.5e-9) -> int:
         """
         returns 0, 1, 2, 3 for (TT, TR, RT, RR)
         """
 
+        if self.coincidences_vchannels is None:
+            self.createCoincidenceChannels(coincidence_window_SI=coincidence_window_SI)
+        
+        # Rotate filters
         self.KMC.rotate_simulataneously(theta_a, theta_b)
+        # Get an Event
+        eventsByChannel = self.collect_stream_data(integration_time, max_time=max_time, minimum_event_count=minimum_event_count)
+        
+        # Pick out the final event from the set (to prevent startup issues with first event)
+        if len(eventsByChannel) == 0:
+            print("No Photons")
+            pickedCoincidence = -1
+        else:
+            pickedCoincidence = self.coincidence_channel_dictionary[eventsByChannel[-1]]
 
-        eventsByChannel = []
-        attemptCounter = 0
-        maxAttempts = 10
-        while len(eventsByChannel) == 0:
-
-            stream = TimeTagger.TimeTagStream(tagger=self.tagger, n_max_events=1000, channels=self.coincidences_vchannels.getChannels())
-            sleep(integration_time)
-            streamData = stream.getData()
-            eventsByChannel = streamData.getChannels()
-            stream.stop()
-
-            # check if anything was measured
-            if attemptCounter >= maxAttempts:
-                return -1
-
-            if len(eventsByChannel) == 0:
-                sleep(0.1)
-            else:
-                break
-
-            
-        # pick out the final event from the set (to prevent startup issues with first event)
-        pickedCoincidence = self.coincidence_channel_dictionary[eventsByChannel[-1]]
         return pickedCoincidence
 
+    def toggle_angles(self, theta_a, theta_b, angle_pairs):
+        """
+        Toggles theta_a and theta_b to their alternative values based on the angle_pairs.
+        Helper function for self.get_single_measurement_metronome()
 
+        Args:
+            theta_a (float): Current value of theta_a.
+            theta_b (float): Current value of theta_b.
+            angle_pairs (list of tuples): List of all possible (theta_a, theta_b) pairs.
+
+        Returns:
+            tuple: New values of (theta_a, theta_b).
+        """
+        # Extract unique options for theta_a and theta_b from the angle pairs
+        theta_a_options = list({pair[0] for pair in angle_pairs})
+        theta_b_options = list({pair[1] for pair in angle_pairs})
+
+        # Toggle theta_a and theta_b
+        new_theta_a = theta_a_options[1] if theta_a == theta_a_options[0] else theta_a_options[0]
+        new_theta_b = theta_b_options[1] if theta_b == theta_b_options[0] else theta_b_options[0]
+
+        return new_theta_a, new_theta_b
+
+    def get_single_measurement_metronome(self, angle_pairs, theta_a, theta_b, prev_theta_a, prev_theta_b, integration_time=0.1, max_time=0.2, min_event_count=10, coincidence_window_SI=0.5e-9) -> int:
+        """
+        Returns result, prev_theta_a, prev_theta_b
+        result takes the form: 0, 1, 2, 3 for (TT, TR, RT, RR)
+        If new angles match previous angles, integrates first, then does a fake rotation to create a sound
+        If there is an angle difference it integrates after the rotation
+        """
+
+        # Timing dictionary
+        timings = {}
+
+        start_time = time.time()
+
+        # Check and create coincidence channels
+        if self.coincidences_vchannels is None:
+            t1 = time.time()
+            self.createCoincidenceChannels(coincidence_window_SI=coincidence_window_SI)
+            timings['createCoincidenceChannels'] = time.time() - t1
+        
+        # if no angle change, integrate first, then do a fake rotate
+        if theta_a == prev_theta_a and theta_b == prev_theta_b:
+            # switch angles to opposite ones
+            theta_a, theta_b = self.toggle_angles(theta_a, theta_b, angle_pairs)
+
+            # get an event
+            t3 = time.time()
+            eventsByChannel = self.collect_stream_data(integration_time, max_time=max_time, min_event_count=min_event_count)
+            timings['stream_loop'] = time.time() - t3
+            
+            # Rotate motors
+            t2 = time.time()
+            self.KMC.rotate_simulataneously(theta_a, theta_b, wait_for_elapsed_time=0.3)
+            timings['rotate_simultaneously'] = time.time() - t2
+
+        # else rotate first, then integrate
+        else:
+            # Rotate motors
+            t2 = time.time()
+            self.KMC.rotate_simulataneously(theta_a, theta_b, wait_for_elapsed_time=0.3)
+            timings['rotate_simultaneously'] = time.time() - t2
+
+            # get an event
+            t3 = time.time()
+            eventsByChannel = self.collect_stream_data(integration_time, max_time=max_time, min_event_count=min_event_count)
+            timings['stream_loop'] = time.time() - t3
+
+        # Pick out the final event
+        if len(eventsByChannel) == 0:
+            print("No Photons")
+            pickedCoincidence = -1
+        else:
+            pickedCoincidence = self.coincidence_channel_dictionary[eventsByChannel[-1]]
+
+        timings['total'] = time.time() - start_time
+        print("Timing Summary:", timings)
+
+        # update prev angles
+        prev_theta_a = theta_a
+        prev_theta_b = theta_b
+
+        return pickedCoincidence, prev_theta_a, prev_theta_b
