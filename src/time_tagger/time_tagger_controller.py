@@ -7,6 +7,7 @@ from ipywidgets import Button, Output
 from time import sleep
 from src.kinetic_mount_controller import KineticMountControl
 from src.time_tagger import TT_Simulator
+from threading import Timer
 
 class TimeTaggerController:
 
@@ -421,6 +422,24 @@ class TimeTaggerController:
         self.KMC.home()
 
     
+    @staticmethod
+    def hybrid_wait(target_duration, start_time):
+        """
+        Combines the efficiency of the inaccurate time.sleep() function
+        with the accuracy of a busy-wait loop once only 20ms are left until the target_duration
+        """
+
+        while True:
+            elapsed_time = time.perf_counter() - start_time
+            remaining_time = target_duration - elapsed_time
+
+            if remaining_time <= 0:
+                break
+
+            if remaining_time > 0.02:  # Sleep only for durations > 20ms
+                time.sleep(remaining_time - 0.02)
+
+
     def collect_stream_data(self, integration_time, max_time, min_event_count=10):
         """
         Collect stream data from the TimeTagger, stopping when the minimum event count
@@ -447,7 +466,7 @@ class TimeTaggerController:
         try:
             while time.time() - start_time < max_time:
                 try:
-                    sleep(integration_time)
+                    self.hybrid_wait(integration_time, time.perf_counter())
                     stream_data = stream.getData()
                     events_by_channel = stream_data.getChannels()
 
@@ -468,6 +487,53 @@ class TimeTaggerController:
         else:
             print(f"Collected {len(events_by_channel)} events in {elapsed_time:.2f} seconds.")
         
+        return events_by_channel
+    
+
+    def collect_stream_data_single_attempt(self, integration_time, target_duration):
+        """
+        Collect stream data from the TimeTagger in a single attempt, returning a random result
+        if no data is collected. The function always takes exactly `fixed_time` seconds to run.
+        
+        Parameters:
+            target_duration (float): The total time (in seconds) the function should take to run.
+            Note that this time must be greater than the integration_time and it should ideally be 
+            tested
+        
+        Returns:
+            list: The eventsByChannel if collected, or a random list if conditions are not met.
+        """
+        start_time = time.perf_counter()
+        events_by_channel = []
+
+        # Create the stream
+        stream = TimeTagger.TimeTagStream(
+            tagger=self.tagger,
+            n_max_events=1000,
+            channels=self.coincidences_vchannels.getChannels()
+        )
+
+        try:
+            # Perform a single attempt at data collection
+            try:
+                self.hybrid_wait(integration_time, time.perf_counter())
+                stream_data = stream.getData()
+                events_by_channel = stream_data.getChannels()
+
+            except Exception as e:
+                print(f"Exception during stream data collection: {e}")
+                events_by_channel = []
+
+        finally:
+            stream.stop()  # Ensure the stream is stopped
+
+        # If no data collected, do something not yet implemented
+        if len(events_by_channel) == 0:
+            events_by_channel = [-1]
+
+        # Wait until target duration is reached
+        self.hybrid_wait(target_duration, start_time)
+
         return events_by_channel
 
     def get_single_measurement(self, theta_a, theta_b, integration_time=0.1, max_time=0.2, minimum_event_count=10, coincidence_window_SI=0.5e-9) -> int:
@@ -515,7 +581,7 @@ class TimeTaggerController:
 
         return new_theta_a, new_theta_b
 
-    def get_single_measurement_metronome(self, angle_pairs, theta_a, theta_b, prev_theta_a, prev_theta_b, integration_time=0.1, max_time=0.2, min_event_count=10, coincidence_window_SI=0.5e-9) -> int:
+    def get_single_measurement_metronome(self, angle_pairs, theta_a, theta_b, prev_theta_a, prev_theta_b, integration_time=0.065, integration_target_duration=0.065, coincidence_window_SI=0.5e-9) -> int:
         """
         Returns result, prev_theta_a, prev_theta_b
         result takes the form: 0, 1, 2, 3 for (TT, TR, RT, RR)
@@ -526,13 +592,13 @@ class TimeTaggerController:
         # Timing dictionary
         timings = {}
 
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         # Check and create coincidence channels
         if self.coincidences_vchannels is None:
-            t1 = time.time()
+            t1 = time.perf_counter()
             self.createCoincidenceChannels(coincidence_window_SI=coincidence_window_SI)
-            timings['createCoincidenceChannels'] = time.time() - t1
+            timings['createCoincidenceChannels'] = time.perf_counter() - t1
         
         # if no angle change, integrate first, then do a fake rotate
         if theta_a == prev_theta_a and theta_b == prev_theta_b:
@@ -540,26 +606,29 @@ class TimeTaggerController:
             theta_a, theta_b = self.toggle_angles(theta_a, theta_b, angle_pairs)
 
             # get an event
-            t3 = time.time()
-            eventsByChannel = self.collect_stream_data(integration_time, max_time=max_time, min_event_count=min_event_count)
-            timings['stream_loop'] = time.time() - t3
+            t3 = time.perf_counter()
+            eventsByChannel = self.collect_stream_data_single_attempt(integration_time, integration_target_duration)
+            timings['stream_loop'] = time.perf_counter() - t3
             
             # Rotate motors
-            t2 = time.time()
+            t2 = time.perf_counter()
             self.KMC.rotate_simulataneously(theta_a, theta_b, wait_for_elapsed_time=0.3)
-            timings['rotate_simultaneously'] = time.time() - t2
+            timings['rotate_simultaneously'] = time.perf_counter() - t2
 
         # else rotate first, then integrate
         else:
+            # wait as if an integration would happen here
+            self.hybrid_wait(integration_target_duration, time.perf_counter())
+
             # Rotate motors
-            t2 = time.time()
+            t2 = time.perf_counter()
             self.KMC.rotate_simulataneously(theta_a, theta_b, wait_for_elapsed_time=0.3)
-            timings['rotate_simultaneously'] = time.time() - t2
+            timings['rotate_simultaneously'] = time.perf_counter() - t2
 
             # get an event
-            t3 = time.time()
-            eventsByChannel = self.collect_stream_data(integration_time, max_time=max_time, min_event_count=min_event_count)
-            timings['stream_loop'] = time.time() - t3
+            t3 = time.perf_counter()
+            eventsByChannel = self.collect_stream_data_single_attempt(integration_time, integration_target_duration)
+            timings['stream_loop'] = time.perf_counter() - t3
 
         # Pick out the final event
         if len(eventsByChannel) == 0:
@@ -568,7 +637,7 @@ class TimeTaggerController:
         else:
             pickedCoincidence = self.coincidence_channel_dictionary[eventsByChannel[-1]]
 
-        timings['total'] = time.time() - start_time
+        timings['total'] = time.perf_counter() - start_time
         print("Timing Summary:", timings)
 
         # update prev angles
