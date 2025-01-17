@@ -581,7 +581,7 @@ class TimeTaggerController:
 
         return new_theta_a, new_theta_b
 
-    def get_single_measurement_metronome(self, angle_pairs, theta_a, theta_b, prev_theta_a, prev_theta_b, integration_time=0.065, integration_target_duration=0.065, coincidence_window_SI=0.5e-9) -> int:
+    def get_single_measurement_metronome(self, angle_pairs, theta_a, theta_b, prev_theta_a, prev_theta_b, integration_time=0.065, max_integration_time=0.07, max_rotation_duration=0.35, coincidence_window_SI=0.5e-9) -> int:
         """
         Returns result, prev_theta_a, prev_theta_b
         result takes the form: 0, 1, 2, 3 for (TT, TR, RT, RR)
@@ -589,46 +589,46 @@ class TimeTaggerController:
         If there is an angle difference it integrates after the rotation
         """
 
+        start_time = time.perf_counter()
+
         # Timing dictionary
         timings = {}
 
-        start_time = time.perf_counter()
+        # bool to hold if a rotation happened or not
+        angles_changed = (theta_a == prev_theta_a) and (theta_b == prev_theta_b)
 
         # Check and create coincidence channels
         if self.coincidences_vchannels is None:
-            t1 = time.perf_counter()
             self.createCoincidenceChannels(coincidence_window_SI=coincidence_window_SI)
-            timings['createCoincidenceChannels'] = time.perf_counter() - t1
         
-        # if no angle change, integrate first, then do a fake rotate
-        if theta_a == prev_theta_a and theta_b == prev_theta_b:
-            # switch angles to opposite ones
+        # if angles_changed (in other words, if a click happened) then just wait
+        # else do the measurement now
+        t1 = time.perf_counter()
+        if angles_changed:
+            self.hybrid_wait(target_duration=max_integration_time, start_time=time.perf_counter())
+        else:
+            # switch angles to opposite ones for pseudo rotation later
             theta_a, theta_b = self.toggle_angles(theta_a, theta_b, angle_pairs)
 
-            # get an event
-            t3 = time.perf_counter()
-            eventsByChannel = self.collect_stream_data_single_attempt(integration_time, integration_target_duration)
-            timings['stream_loop'] = time.perf_counter() - t3
-            
-            # Rotate motors
-            t2 = time.perf_counter()
-            self.KMC.rotate_simulataneously(theta_a, theta_b, wait_for_elapsed_time=0.3)
-            timings['rotate_simultaneously'] = time.perf_counter() - t2
+            # do a measurement
+            eventsByChannel = self.collect_stream_data_single_attempt(integration_time, max_integration_time)
+        timings['pre_rotation_time'] = time.perf_counter() - t1
+        
+        # Perform rotation
+        # Do not wait for completion, instead just go to max time
+        t2 = time.perf_counter()
+        self.KMC.rotate_simulataneously_metronome(theta_a, theta_b, wait_for_completion=True, target_duration=max_rotation_duration)
+        timings['rotate_simultaneously'] = time.perf_counter() - t2
 
-        # else rotate first, then integrate
+
+        # if angles_changed (in other words, if a click has happened) integrate now
+        # else do nothing and wait
+        t3 = time.perf_counter()
+        if angles_changed:
+            # do a measurement
+            eventsByChannel = self.collect_stream_data_single_attempt(integration_time, max_integration_time)
         else:
-            # wait as if an integration would happen here
-            self.hybrid_wait(integration_target_duration, time.perf_counter())
-
-            # Rotate motors
-            t2 = time.perf_counter()
-            self.KMC.rotate_simulataneously(theta_a, theta_b, wait_for_elapsed_time=0.3)
-            timings['rotate_simultaneously'] = time.perf_counter() - t2
-
-            # get an event
-            t3 = time.perf_counter()
-            eventsByChannel = self.collect_stream_data_single_attempt(integration_time, integration_target_duration)
-            timings['stream_loop'] = time.perf_counter() - t3
+            self.hybrid_wait(target_duration=max_integration_time, start_time=time.perf_counter())
 
         # Pick out the final event
         if len(eventsByChannel) == 0:
@@ -637,11 +637,12 @@ class TimeTaggerController:
         else:
             pickedCoincidence = self.coincidence_channel_dictionary[eventsByChannel[-1]]
 
-        timings['total'] = time.perf_counter() - start_time
-        print("Timing Summary:", timings)
-
         # update prev angles
         prev_theta_a = theta_a
         prev_theta_b = theta_b
+
+        timings['post_rotation_time'] = time.perf_counter() - t3
+        timings['total'] = time.perf_counter() - start_time
+        print("Timing Summary:", timings)
 
         return pickedCoincidence, prev_theta_a, prev_theta_b

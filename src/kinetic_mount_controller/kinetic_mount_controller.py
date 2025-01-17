@@ -86,7 +86,7 @@ class KineticMountControl:
 
     # MOVEMENT FUNCTIONS
 
-    # TODO: Shutter needs to be calibrated to open, and then only referred to as classical or quantum
+    # We chose not to implement the shutter after all. But if we do so later, we would use this
     def toggle_shutter():
         pass
     
@@ -101,6 +101,24 @@ class KineticMountControl:
         thread = threading.Thread(target=self.bob.set_angle, args=(angle,))
         thread.start()
         thread.join()
+
+    @staticmethod
+    def hybrid_wait(target_duration, start_time):
+        """
+        Combines the efficiency of the inaccurate time.sleep() function
+        with the accuracy of a busy-wait loop once only 20ms are left until the target_duration
+        """
+
+        while True:
+            elapsed_time = time.perf_counter() - start_time
+            remaining_time = target_duration - elapsed_time
+
+            if remaining_time <= 0:
+                break
+
+            if remaining_time > 0.02:  # Sleep only for durations > 20ms
+                time.sleep(remaining_time - 0.02)
+
 
     def rotate_simulataneously(self, alice_angle, bob_angle, wait_for_completion=True, wait_for_elapsed_time=0):
         """
@@ -135,6 +153,45 @@ class KineticMountControl:
             time.sleep(wait_for_elapsed_time - elapsed_time)
         
 
+    def rotate_simulataneously_metronome(self, alice_angle, bob_angle, wait_for_completion=True, target_duration=None):
+        """
+        Uses multithreading to rotate bob and alice simultaneously. 
+        Allows for user set time offsets in order to synchronize clicking sounds between rotators
+        
+        Parameters:
+            alice_angle: Target angle for Alice.
+            bob_angle: Target angle for Bob.
+            wait_for_completion: If True, waits for rotation to complete before returning.
+                                If False, returns as soon as possible while rotators still turning in different threads
+            target_duration: Code returns once this time is reached (assuming computation is done by then)
+        """
+        start_time = time.perf_counter()
+
+        thread_a = threading.Thread(target=self.alice.set_angle, args=(alice_angle,))
+        thread_b = threading.Thread(target=self.bob.set_angle, args=(bob_angle,))
+
+        bob_start_delay = 0.004
+
+        # Start both threads, but delay bob
+        if bob_start_delay > 0:
+            thread_a.start()
+            self.hybrid_wait(target_duration=bob_start_delay, start_time=time.perf_counter())
+            thread_b.start()
+        
+        # if negative bob delay, then delay alice instead
+        else:
+            thread_b.start()
+            self.hybrid_wait(target_duration= -1 * bob_start_delay, start_time=time.perf_counter())
+            thread_a.start()
+
+        # Wait for both threads to complete
+        if wait_for_completion:
+            thread_a.join()
+            thread_b.join()
+
+        # wait until target duration is reached
+        if time.perf_counter() - start_time <=  target_duration:
+            self.hybrid_wait(target_duration, start_time=start_time)
 
 
 
