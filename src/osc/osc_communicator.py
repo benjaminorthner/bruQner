@@ -90,6 +90,10 @@ class OSCCommunicator:
         target.client.send_message("/bruQner/measurement_result", measurement_results)
         self.log(f'Measurement {measurement_results} sent to {target.name}')
     
+    def send_click_reference(self, target:OSCTarget):
+        target.client.send_message("/bruQner/klick", 1)
+        self.log(f'Click sent to {target.name}')
+    
     def send_visuals(self, target:OSCTarget, measurement_results):
         target.client.send_message("/bruQner/visuals/manual", measurement_results)
         self.log(f'Measurement {measurement_results} sent to {target.name}')

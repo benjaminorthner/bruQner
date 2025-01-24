@@ -581,7 +581,7 @@ class TimeTaggerController:
 
         return new_theta_a, new_theta_b
 
-    def get_single_measurement_metronome(self, angle_pairs, theta_a, theta_b, prev_theta_a, prev_theta_b, integration_time=0.065, max_integration_time=0.07, max_rotation_duration=0.35, coincidence_window_SI=0.5e-9) -> int:
+    def get_single_measurement_metronome(self, angle_pairs, theta_a, theta_b, prev_theta_a, prev_theta_b, metronome_interval=0.52, integration_time=0.065, max_integration_time=0.07, max_rotation_duration=0.35, coincidence_window_SI=0.5e-9) -> int:
         """
         Returns result, prev_theta_a, prev_theta_b
         result takes the form: 0, 1, 2, 3 for (TT, TR, RT, RR)
@@ -595,7 +595,7 @@ class TimeTaggerController:
         timings = {}
 
         # bool to hold if a rotation happened or not
-        angles_changed = (theta_a == prev_theta_a) and (theta_b == prev_theta_b)
+        angles_changed = (theta_a != prev_theta_a) or (theta_b != prev_theta_b)
 
         # Check and create coincidence channels
         if self.coincidences_vchannels is None:
@@ -617,7 +617,7 @@ class TimeTaggerController:
         # Perform rotation
         # Do not wait for completion, instead just go to max time
         t2 = time.perf_counter()
-        self.KMC.rotate_simulataneously_metronome(theta_a, theta_b, wait_for_completion=True, target_duration=max_rotation_duration)
+        self.KMC.rotate_simulataneously_metronome(theta_a, theta_b, prev_theta_a, prev_theta_b, wait_for_completion=False, target_duration=max_rotation_duration)
         timings['rotate_simultaneously'] = time.perf_counter() - t2
 
 
@@ -640,9 +640,15 @@ class TimeTaggerController:
         # update prev angles
         prev_theta_a = theta_a
         prev_theta_b = theta_b
-
+    
         timings['post_rotation_time'] = time.perf_counter() - t3
+
+        # buffer the remianing time to reach the desired metronome_interval 
+        t4 = time.perf_counter()
+        self.hybrid_wait(target_duration=metronome_interval, start_time=start_time)
+        timings['end_buffer'] = time.perf_counter() - t4
+
         timings['total'] = time.perf_counter() - start_time
-        print("Timing Summary:", timings)
+        print("Timing Summary:", [f"{k}: {v * 1e3:.1f}ms" for k, v in timings.items()])
 
         return pickedCoincidence, prev_theta_a, prev_theta_b

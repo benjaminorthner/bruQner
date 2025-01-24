@@ -153,7 +153,7 @@ class KineticMountControl:
             time.sleep(wait_for_elapsed_time - elapsed_time)
         
 
-    def rotate_simulataneously_metronome(self, alice_angle, bob_angle, wait_for_completion=True, target_duration=None):
+    def rotate_simulataneously_metronome(self, alice_angle, bob_angle, alice_prev_angle, bob_prev_angle, wait_for_completion=True, target_duration=None):
         """
         Uses multithreading to rotate bob and alice simultaneously. 
         Allows for user set time offsets in order to synchronize clicking sounds between rotators
@@ -170,26 +170,45 @@ class KineticMountControl:
         thread_a = threading.Thread(target=self.alice.set_angle, args=(alice_angle,))
         thread_b = threading.Thread(target=self.bob.set_angle, args=(bob_angle,))
 
-        bob_start_delay = 0.004
+        bob_delay = 0.008
+        alice_delay = 0
+        bob_cw_delay = 0.005
+        bob_ccw_delay = 0
+        alice_cw_delay = 0.03
+        alice_ccw_delay = 0.01
 
-        # Start both threads, but delay bob
-        if bob_start_delay > 0:
-            thread_a.start()
-            self.hybrid_wait(target_duration=bob_start_delay, start_time=time.perf_counter())
+        # Get total delays based on rotation direction 
+        alice_total_delay = alice_delay
+        if alice_angle != alice_prev_angle:
+            alice_total_delay += (alice_cw_delay if alice_angle > alice_prev_angle else alice_ccw_delay)
+
+        bob_total_delay = bob_delay 
+        if bob_angle != bob_prev_angle:
+            bob_total_delay += (bob_cw_delay if bob_angle > bob_prev_angle else bob_ccw_delay)
+
+
+        # start bob first and delay alice 
+        if alice_total_delay > bob_total_delay:
+            thread_start_time = time.perf_counter()
+            self.hybrid_wait(target_duration=bob_total_delay, start_time=thread_start_time)
             thread_b.start()
+            self.hybrid_wait(target_duration=alice_total_delay, start_time=thread_start_time)
+            thread_a.start()
         
-        # if negative bob delay, then delay alice instead
+        # start alice first and delay bob
         else:
-            thread_b.start()
-            self.hybrid_wait(target_duration= -1 * bob_start_delay, start_time=time.perf_counter())
+            thread_start_time = time.perf_counter()
+            self.hybrid_wait(target_duration=alice_total_delay, start_time=thread_start_time)
             thread_a.start()
+            self.hybrid_wait(target_duration=bob_total_delay, start_time=thread_start_time)
+            thread_b.start()
 
         # Wait for both threads to complete
         if wait_for_completion:
             thread_a.join()
             thread_b.join()
 
-        # wait until target duration is reached
+        # wait until target duration is reached regardless of wait_for_completion parameter
         if time.perf_counter() - start_time <=  target_duration:
             self.hybrid_wait(target_duration, start_time=start_time)
 
