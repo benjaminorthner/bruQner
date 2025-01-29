@@ -581,7 +581,7 @@ class TimeTaggerController:
 
         return new_theta_a, new_theta_b
 
-    def get_single_measurement_metronome(self, angle_pairs, theta_a, theta_b, prev_theta_a, prev_theta_b, metronome_interval=0.52, integration_time=0.065, max_integration_time=0.07, max_rotation_duration=0.35, coincidence_window_SI=0.5e-9) -> int:
+    def get_single_measurement_metronome(self, angle_pairs, theta_a, theta_b, prev_theta_a, prev_theta_b, metronome_interval=0.52, integration_time=0.065, max_integration_time=0.07, max_rotation_duration=0.35, coincidence_window_SI=0.5e-9, debug=False) -> int:
         """
         Returns result, prev_theta_a, prev_theta_b
         result takes the form: 0, 1, 2, 3 for (TT, TR, RT, RR)
@@ -631,8 +631,7 @@ class TimeTaggerController:
             self.hybrid_wait(target_duration=max_integration_time, start_time=time.perf_counter())
 
         # Pick out the final event
-        if len(eventsByChannel) == 0:
-            print("No Photons")
+        if eventsByChannel[0] == -1:
             pickedCoincidence = -1
         else:
             pickedCoincidence = self.coincidence_channel_dictionary[eventsByChannel[-1]]
@@ -649,6 +648,6 @@ class TimeTaggerController:
         timings['end_buffer'] = time.perf_counter() - t4
 
         timings['total'] = time.perf_counter() - start_time
-        print("Timing Summary:", [f"{k}: {v * 1e3:.1f}ms" for k, v in timings.items()])
+        if debug: print("Timing Summary:", [f"{k}: {v * 1e3:.1f}ms" for k, v in timings.items()])
 
         return pickedCoincidence, prev_theta_a, prev_theta_b
