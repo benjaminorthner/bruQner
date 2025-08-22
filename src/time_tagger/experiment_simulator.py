@@ -33,11 +33,12 @@ def half_wave_plate_sympy(theta):
 
 
 class TT_Simulator:
-    def __init__(self, initial_state, initial_state_noise=0, debug=True) -> None:
+    def __init__(self, initial_state, initial_state_noise=0, detector_efficiencies=[1,1,1,1], debug=True) -> None:
         
         self.debug = debug
         self.initial_state = initial_state
         self.initial_state_noise = initial_state_noise
+        self.detector_efficiencies = detector_efficiencies # this is a crude implementation and possibly not physically accurate yet
 
         # Define coincidence measurement operators
         P_V = V * Dagger(V)  # |V><V| projection operator
@@ -100,8 +101,9 @@ class TT_Simulator:
         self.calc_outcome_probabilities(state_density, theta_a, theta_b)
 
         # calculate correlation function
-        C = Tr(state_density * self.HH_operator) - Tr(state_density * self.HV_operator)- Tr(state_density * self.VH_operator) + Tr(state_density * self.VV_operator)
+        C = Tr(state_density * self.HH_operator) - Tr(state_density * self.HV_operator) - Tr(state_density * self.VH_operator) + Tr(state_density * self.VV_operator)
         C = C.simplify()
+        print(C)
 
         if lambdify:
             return sp.lambdify([theta_a, theta_b], C)
@@ -154,15 +156,19 @@ class TT_Simulator:
 
     def calc_outcome_probabilities(self, rho, theta_1, theta_2):
         """
-        Returns a lambda function that gives probability of measuring click for each possible coincidence pair
+        Creates a lambda function that gives probability of measuring click for each possible coincidence pair
+        the detector efficiency implementation is very wrong and not physical, but it can simulate it somewhat for now
+        I have to think through this again later to model it more accurately: TODO
         """
-        self.outcome_probabilities = sp.lambdify([theta_1, theta_2],
-                sp.Matrix([
-                    Tr(rho * self.HH_operator),
-                    Tr(rho * self.HV_operator),
-                    Tr(rho * self.VH_operator),
-                    Tr(rho * self.VV_operator)
-        ]))
+        probability_vector = sp.Matrix([
+            self.detector_efficiencies[0] * Tr(rho * self.HH_operator),
+            self.detector_efficiencies[1] * Tr(rho * self.HV_operator),
+            self.detector_efficiencies[2] * Tr(rho * self.VH_operator),
+            self.detector_efficiencies[3] * Tr(rho * self.VV_operator)
+        ])
+
+        # normalise out the detector efficiencies and lambdify to make actual values
+        self.outcome_probabilities = sp.lambdify([theta_1, theta_2], probability_vector / sum(probability_vector))
 
     
     def _measure_entangled_pair(self, theta_a, theta_b) -> int:
@@ -170,7 +176,7 @@ class TT_Simulator:
         Returns 0, 1, 2, 3 depending on which coincidence was triggered
         0:HH, 1:HV, 2:VH, 3:VV 
         """
-        return np.random.choice(a=[0, 1, 2, 3], p=self.outcome_probabilities(theta_a, theta_b)[:,0])
+        return np.random.choice(a=[0, 1, 2, 3], p=self.outcome_probabilities(theta_a, theta_b)[:,0] / sum(self.outcome_probabilities(theta_a, theta_b)))
         
 
     def measure_n_entangled_pairs(self, n, theta_a, theta_b):
