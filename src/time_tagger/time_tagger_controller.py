@@ -294,7 +294,36 @@ class TimeTaggerController:
             counter.waitUntilFinished()
 
         return np.array([counter.getData(rolling=False)[0][-1] for counter in counters], dtype=int)
+    
+    def _render_bar(self, val, width=45, show_mid=False, ascii=False):
+        """
+        Return a single horizontal bar (string) for val in [0,1].
+        - width: bar width in characters
+        - show_mid: draw a center marker to gauge symmetry
+        - ascii: use '#' and '|' instead of Unicode blocks
+        """
+        full_char = '#' if ascii else '█'
+        partials = '' if ascii else '▏▎▍▌▋▊▉'
+        mid_char = '|' if ascii else '│'
 
+        v = max(0.0, min(1.0, float(val)))
+        scaled = v * width
+        full = int(scaled)
+        rem = scaled - full
+
+        part = ''
+        if partials and rem > 0 and full < width:
+            idx = min(int(rem * len(partials)), len(partials) - 1)
+            part = partials[idx]
+
+        bar = (full_char * full + part)[:width].ljust(width)
+
+        if show_mid and width >= 1:
+            mid = width // 2
+            bar = bar[:mid] + mid_char + bar[mid+1:]
+
+        return bar
+    
     def measureS(self, CHSH_angles, coincidence_window_SI = 0.1e-9, integration_time_per_basis_setting_SI=1, TTSimulator : TT_Simulator=None, debug=True):
 
         # home all kinetic mounts
@@ -353,7 +382,9 @@ class TimeTaggerController:
                 if debug:
                     print(f"\ncorr[{'a' if i == 0 else 'A'},{'b' if j==0 else 'B'}] = {corrs[i, j]:.5}")
                     for x in range(4):
-                        print(f"\tN[{self.coincidence_channel_names[x]}]={N[x]:>6}\t({N[x] / N.sum():<4.3f})")
+                        fraction = N[x] / N.sum()
+                        bar = self._render_bar(fraction)
+                        print(f"\tN[{self.coincidence_channel_names[x]}]={N[x]:>6}\t({fraction:<4.3f}) {bar}")
         
         # Calculate S
         S = np.abs(corrs[0,0] + corrs[0,1] + corrs[1,0] - corrs[1,1])
