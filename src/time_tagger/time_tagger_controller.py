@@ -567,7 +567,7 @@ class TimeTaggerController:
 
         return events_by_channel
 
-    def get_single_measurement(self, theta_a, theta_b, integration_time=0.1, max_time=0.2, minimum_event_count=10, coincidence_window_SI=0.5e-9) -> int:
+    def get_single_measurement(self, theta_a, theta_b, integration_time=0.1, max_time=0.2, min_event_count=10, coincidence_window_SI=0.5e-9) -> int:
         """
         returns 0, 1, 2, 3 for (TT, TR, RT, RR)
         """
@@ -578,7 +578,7 @@ class TimeTaggerController:
         # Rotate filters
         self.KMC.rotate_simulataneously(theta_a, theta_b)
         # Get an Event
-        eventsByChannel = self.collect_stream_data(integration_time, max_time=max_time, minimum_event_count=minimum_event_count)
+        eventsByChannel = self.collect_stream_data(integration_time, max_time=max_time, min_event_count=min_event_count)
         
         # Pick out the final event from the set (to prevent startup issues with first event)
         if len(eventsByChannel) == 0:
