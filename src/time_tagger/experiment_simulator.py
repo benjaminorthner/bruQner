@@ -33,11 +33,12 @@ def half_wave_plate_sympy(theta):
 
 
 class TT_Simulator:
-    def __init__(self, initial_state, initial_state_noise=0, detector_efficiencies=[1,1,1,1], debug=True) -> None:
+    def __init__(self, initial_state, initial_state_noise_q=0, initial_state_noise_vis=1, detector_efficiencies=[1,1,1,1], debug=True) -> None:
         
         self.debug = debug
         self.initial_state = initial_state
-        self.initial_state_noise = initial_state_noise
+        self.initial_state_noise_q = initial_state_noise_q
+        self.initial_state_noise_vis = initial_state_noise_vis
         self.detector_efficiencies = detector_efficiencies # this is a crude implementation and possibly not physically accurate yet
 
         # Define coincidence measurement operators
@@ -52,14 +53,17 @@ class TT_Simulator:
             self._print_div("\nTIME-TAGGER SIMULATOR")
             print("Initialising . . .")
 
-        self.initial_state_density = self._density_operator_from_vector(initial_state)
+        #self.initial_state[-1] = self.initial_state_noise_vis
+        self.initial_state_density = self._density_operator_from_vector(self.initial_state)
         
         # apply depolarizing noise (1-noise)*rho + noise * I, where noise from 0 to 1
         # then renormalise for trace to be 1
-        self.initial_state_density = (1-self.initial_state_noise) * self.initial_state_density + self.initial_state_noise * sp.eye(4)
+        self.initial_state_density = (1-self.initial_state_noise_q) * self.initial_state_density + self.initial_state_noise_q/4 * sp.eye(4)
+        print(self.initial_state_density)
+        print(Tr(self.initial_state_density))
         self.initial_state_density *= 1/Tr(self.initial_state_density)
 
-        self.correlation_function = self.find_correlation_function(self.initial_state_density)
+        self.correlation_function, self.correlation_function_lambdified = self.find_correlation_function(self.initial_state_density, lambdify='both')
         self.S, self.CHSH_angles = self.find_CHSH_angles(self.initial_state_density)
 
         # give the angles in terms of the filter angle (not light polarisation angle), and in degrees
@@ -105,10 +109,12 @@ class TT_Simulator:
         C = C.simplify()
         print(C)
 
-        if lambdify:
+        if lambdify == True:
             return sp.lambdify([theta_a, theta_b], C)
-        else:
+        elif lambdify ==False:
             return C 
+        elif lambdify == 'both':
+            return C, sp.lambdify([theta_a, theta_b], C)
 
     def find_CHSH_angles(self, initial_state_density):
         """
@@ -139,6 +145,62 @@ class TT_Simulator:
 
         return maximum, angles 
 
+    def S_for_fixed_angles(self, theta_a0, theta_a1, theta_b0, theta_b1, angle_mode='degrees', angle_reference='filter', return_absolute=True):
+        '''
+        angle_mode='degrees': ['degrees', 'radians'] - which angle 'unit' are you using
+        angle reference='filter': ['filter', 'polarization'] - are we talking about filer angles or polarization angles
+        return_absolute=True: if False, will return S value without taking absolute (useful for achieveing larger differences when simulating classical with angles) 
+        '''
+        assert angle_mode in ['degrees', 'radians']
+        assert angle_reference in ['filter', 'polarization']
+
+        # correlation function requires radians in polarization angles
+        conversion = 1
+        conversion *= 2 if angle_reference == 'filter' else 1 # doubles angle in order to be in polarization reference 
+        conversion *= np.pi / 180 if angle_mode == 'degrees' else 1 # converts from deg -> radians
+
+        if angle_mode == 'degrees':
+            theta_a0 *= conversion
+            theta_a1 *= conversion
+            theta_b0 *= conversion
+            theta_b1 *= conversion
+
+        C = self.correlation_function_lambdified
+        S = C(theta_a0, theta_b0) + C(theta_a1, theta_b0)+C(theta_a0, theta_b1) - C(theta_a1, theta_b1)
+
+        if return_absolute: 
+            S = np.abs(S)
+        return float(S)
+
+    def render_bar(self, val, width=45, show_mid=False, ascii=False):
+        """
+        Return a single horizontal bar (string) for val in [0,1].
+        - width: bar width in characters
+        - show_mid: draw a center marker to gauge symmetry
+        - ascii: use '#' and '|' instead of Unicode blocks
+        """
+        full_char = '#' if ascii else '█'
+        partials = '' if ascii else '▏▎▍▌▋▊▉'
+        mid_char = '|' if ascii else '│'
+
+        v = max(0.0, min(1.0, float(val)))
+        scaled = v * width
+        full = int(scaled)
+        rem = scaled - full
+
+        part = ''
+        if partials and rem > 0 and full < width:
+            idx = min(int(rem * len(partials)), len(partials) - 1)
+            part = partials[idx]
+
+        bar = (full_char * full + part)[:width].ljust(width)
+
+        if show_mid and width >= 1:
+            mid = width // 2
+            bar = bar[:mid] + mid_char + bar[mid+1:]
+
+        return bar 
+
     def print_summary(self):
 
         print("\nFor the initial state:")
@@ -166,7 +228,7 @@ class TT_Simulator:
             self.detector_efficiencies[2] * Tr(rho * self.VH_operator),
             self.detector_efficiencies[3] * Tr(rho * self.VV_operator)
         ])
-
+        print(probability_vector)
         # normalise out the detector efficiencies and lambdify to make actual values
         self.outcome_probabilities = sp.lambdify([theta_1, theta_2], probability_vector / sum(probability_vector))
 
